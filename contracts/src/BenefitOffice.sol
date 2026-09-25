@@ -33,6 +33,7 @@ contract BenefitOffice {
     event BenefitRegistered(bytes32 indexed benefitId, uint256 amountWei);
     event OperatorChanged(address operator);
     event BenefitPaid(bytes32 indexed benefitId, address indexed recipient, bytes32 claimHash, uint256 amountWei);
+    event PaidReset(bytes32 indexed benefitId, address indexed recipient);
 
     error NotOwner();
     error NotOperator();
@@ -90,6 +91,14 @@ contract BenefitOffice {
         paid[benefitId][recipient] = true;
         if (!jpyc.transfer(recipient, amount)) revert TransferFailed();
         emit BenefitPaid(benefitId, recipient, claimHash, amount);
+    }
+
+    /// DEMO ONLY: clears a recipient's paid flag so the same wallet can claim
+    /// again in the next demo take. It gives the owner power to allow a second
+    /// payout, so a production office must not have it.
+    function resetPaid(bytes32 benefitId, address recipient) external onlyOwner {
+        paid[benefitId][recipient] = false;
+        emit PaidReset(benefitId, recipient);
     }
 
     function withdraw(uint256 amount) external onlyOwner {

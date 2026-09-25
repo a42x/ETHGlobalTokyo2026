@@ -158,6 +158,37 @@ contract BenefitOfficeTest is Test {
         office.setOperator(alice);
     }
 
+    event PaidReset(bytes32 indexed benefitId, address indexed recipient);
+
+    function test_ownerResetLetsTheSameWalletClaimAgain() public {
+        acceptFor(alice);
+        claimAs(operator, alice);
+        vm.expectRevert(BenefitOffice.AlreadyPaid.selector);
+        claimAs(operator, alice);
+
+        vm.expectEmit(address(office));
+        emit PaidReset(YOUTH, alice);
+        office.resetPaid(YOUTH, alice);
+        assertFalse(office.paid(YOUTH, alice));
+
+        claimAs(operator, alice);
+        assertEq(jpyc.balanceOf(alice), 1_000e18);
+        assertEq(jpyc.balanceOf(address(office)), 9_000e18);
+        assertTrue(office.paid(YOUTH, alice));
+    }
+
+    function test_onlyOwnerCanResetPaid() public {
+        acceptFor(alice);
+        claimAs(operator, alice);
+        vm.prank(operator);
+        vm.expectRevert(BenefitOffice.NotOwner.selector);
+        office.resetPaid(YOUTH, alice);
+        vm.prank(alice);
+        vm.expectRevert(BenefitOffice.NotOwner.selector);
+        office.resetPaid(YOUTH, alice);
+        assertTrue(office.paid(YOUTH, alice));
+    }
+
     function test_unknownBenefitReverts() public {
         vm.prank(operator);
         vm.expectRevert(BenefitOffice.UnknownBenefit.selector);

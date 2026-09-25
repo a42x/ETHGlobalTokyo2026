@@ -18,10 +18,10 @@
     "testRootSource": "zk-age-verifier/fixtures/synthetic (ZeroKeyMate synthetic JPKI root, not a real card)"
   },
   "BenefitOffice": {
-    "address": "0x91f11e24fd60c654814eef71bfb9d267b61e2bd0",
+    "address": "0xdd042c51ae39902c1c49b9c1d28ba1b0ce74d104",
     "gate": "0x176d7299c1a118356fdd8ed0d15a68b8fcf45803 (BenefitAgeGate, J-LIS)",
-    "transaction": "0x3050a491e220ecc70212e172a99a9aa3afe6cef05e636fbd0f190fc1277c9dee",
-    "block": 48528055,
+    "transaction": "0x2d3f0fb7d49097f734d24a404962cec3e0fe74a598cfaf43b9cf058b95853eb7",
+    "block": 48553891,
     "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
     "jpyc": "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29",
     "benefits": {
@@ -33,9 +33,10 @@
     },
     "initialFundingWei": "5000000000000000000000",
     "otherTransactions": [
-      "0x6712c33679ab9284f7bdbb5da8bfab0e12dfcca1b5d2a0a231f658c6d3e4b7a5",
-      "0xa0dc633d8767efecc462ceb958fcf069b89bf44781236f6f47fbecfa4b8f43d6"
-    ]
+      "0x368adec4c7eb97924fa27e0390a5884724e6327abc2de7545c94e23c3cc61ade",
+      "0xc415c07edd43b08428908a2135b8c67253f544ed13657636126475057e6fb80a"
+    ],
+    "note": "has the demo-only resetPaid"
   },
   "BenefitAgeGateJpkiTest": {
     "address": "0x0662cdd6aea98ca840cb3001188be4efbb635a14",
@@ -44,10 +45,10 @@
     "roots": "JPKI-TEST signing CAs sig_ca_8, sig_ca_1, sig_ca_14, sig_ca_10 (a42x/jpki-api certificates/development)"
   },
   "BenefitOfficeJpkiTest": {
-    "address": "0x498b834190a565bf30791c95d52f82bb6d9e91dc",
+    "address": "0x7fa6e5a6db7a45d2514beb7f30c5f542a0ebd09f",
     "gate": "0x0662cdd6aea98ca840cb3001188be4efbb635a14 (BenefitAgeGateJpkiTest)",
-    "transaction": "0xd65765cb22da7dfd13687d20904f33c44b1f224bc35d7bc9821264a0ee19d33d",
-    "block": 48542504,
+    "transaction": "0xbd20ec0b56d8615858c33e6b56299f46cc4fa825df310b5e198a222163295d66",
+    "block": 48553900,
     "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
     "benefits": {
       "youth-support-2026": {
@@ -57,7 +58,52 @@
       }
     },
     "initialFundingWei": "5000000000000000000000",
-    "fundingTransaction": "0x7ef05e1589facc86e260979c05ae2eb6926ea1654d185928244e989680405c35",
-    "note": "the funding transfer inside the deploy script ran out of gas (0x61de3d7c\u2026); it was resent with a 150000 gas limit"
+    "otherTransactions": [
+      "0xb2733db830d42807079c8bafd891e8904e565de0227e65919878b08b22010ca5",
+      "0x99730f68fc23ebc3297ff7cc855e365ba65d76ee6cada0a6ef3734d8f9f80a6f"
+    ],
+    "note": "has the demo-only resetPaid"
+  },
+  "deprecated": {
+    "note": "replaced by the offices above (no resetPaid); JPYC withdrawn to the deployer",
+    "BenefitOffice": {
+      "address": "0x91f11e24fd60c654814eef71bfb9d267b61e2bd0",
+      "gate": "0x176d7299c1a118356fdd8ed0d15a68b8fcf45803 (BenefitAgeGate, J-LIS)",
+      "transaction": "0x3050a491e220ecc70212e172a99a9aa3afe6cef05e636fbd0f190fc1277c9dee",
+      "block": 48528055,
+      "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
+      "jpyc": "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29",
+      "benefits": {
+        "youth-support-2026": {
+          "id": "0xab7d61ea757e2ca73a35cce44be9780742454bff7d5121d9ffe96a134c3ef529",
+          "amountWei": "500000000000000000000",
+          "minAge": 20
+        }
+      },
+      "initialFundingWei": "5000000000000000000000",
+      "otherTransactions": [
+        "0x6712c33679ab9284f7bdbb5da8bfab0e12dfcca1b5d2a0a231f658c6d3e4b7a5",
+        "0xa0dc633d8767efecc462ceb958fcf069b89bf44781236f6f47fbecfa4b8f43d6"
+      ],
+      "withdrawTransaction": "0x2dd37a8454f8def2ad38768607d77d285756ca347d394180da98a2906df628d7"
+    },
+    "BenefitOfficeJpkiTest": {
+      "address": "0x498b834190a565bf30791c95d52f82bb6d9e91dc",
+      "gate": "0x0662cdd6aea98ca840cb3001188be4efbb635a14 (BenefitAgeGateJpkiTest)",
+      "transaction": "0xd65765cb22da7dfd13687d20904f33c44b1f224bc35d7bc9821264a0ee19d33d",
+      "block": 48542504,
+      "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
+      "benefits": {
+        "youth-support-2026": {
+          "id": "0xab7d61ea757e2ca73a35cce44be9780742454bff7d5121d9ffe96a134c3ef529",
+          "amountWei": "500000000000000000000",
+          "minAge": 20
+        }
+      },
+      "initialFundingWei": "5000000000000000000000",
+      "fundingTransaction": "0x7ef05e1589facc86e260979c05ae2eb6926ea1654d185928244e989680405c35",
+      "note": "the funding transfer inside the deploy script ran out of gas (0x61de3d7c\u2026); it was resent with a 150000 gas limit",
+      "withdrawTransaction": "0x655307bf8ebd3a52e4a1a15d0d8443c6b4972b38799c2e577d8722334d6f6cef"
+    }
   }
 }
