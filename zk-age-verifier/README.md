@@ -5,6 +5,14 @@ ETHGlobal Tokyo 2026 の給付金デモ用で、テストネット専用です�
 
 このディレクトリは Verifier 単体だけを扱います。給付金の申請に証明を結びつける gate は別に作ります。
 
+## デプロイ済みのアドレス
+
+| chain | Verifier |
+| --- | --- |
+| Polygon Amoy (80002) | [`0xb89d8e0c4a345ead852ab919548734c4f506596c`](https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c) |
+
+デプロイの記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+
 ## 使い方
 
 Node 22 以上と [Foundry](https://getfoundry.sh/) の `anvil` が必要です。
@@ -22,6 +30,9 @@ Amoy へのデプロイは、テストネット専用の使い捨ての鍵に fa
 AMOY_DEPLOYER_PRIVATE_KEY=0x… npm run deploy   # deployments/amoy.json に記録する。記録があれば二重デプロイを拒否する
 npm run verify                                  # 記録したアドレスで検証する
 ```
+
+Amoy の priority fee の推奨値は、実際に取り込まれている値よりかなり高いことがあります。
+`AMOY_PRIORITY_FEE_GWEI=30` のように指定すると、その値でデプロイします。
 
 RPC の既定値は `https://polygon-amoy-bor-rpc.publicnode.com` で、`AMOY_RPC_URL` で上書きできます。
 `--dry-run` には `eth_call` の state override に対応した RPC が必要です。

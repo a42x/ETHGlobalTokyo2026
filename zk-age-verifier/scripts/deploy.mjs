@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
-import {createPublicClient, createWalletClient, http, keccak256} from 'viem';
+import {createPublicClient, createWalletClient, http, keccak256, parseGwei} from 'viem';
 import {privateKeyToAccount} from 'viem/accounts';
 import {polygonAmoy} from 'viem/chains';
 import {AMOY_CHAIN_ID, AMOY_RPC, SETTINGS, VERIFIER_SHA256, compileVerifier, root} from './lib.mjs';
@@ -21,7 +21,15 @@ assert.equal(await client.getChainId(), AMOY_CHAIN_ID, 'RPC is Polygon Amoy');
 const account = privateKeyToAccount(key);
 const wallet = createWalletClient({chain: polygonAmoy, transport, account});
 
-const hash = await wallet.deployContract({abi: verifier.abi, bytecode: verifier.bytecode});
+// Amoy's suggested tip is often far above what gets included; allow a lower one.
+const tipGwei = process.env.AMOY_PRIORITY_FEE_GWEI;
+const fees = {};
+if (tipGwei) {
+  const maxPriorityFeePerGas = parseGwei(tipGwei);
+  const {baseFeePerGas} = await client.getBlock();
+  Object.assign(fees, {maxPriorityFeePerGas, maxFeePerGas: baseFeePerGas * 2n + maxPriorityFeePerGas});
+}
+const hash = await wallet.deployContract({abi: verifier.abi, bytecode: verifier.bytecode, ...fees});
 console.log(`sent ${hash}`);
 const receipt = await client.waitForTransactionReceipt({hash});
 assert.equal(receipt.status, 'success', 'deployment succeeded');
