@@ -1,0 +1,17 @@
+{
+  "name": "zk-age-verifier",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "test": "node scripts/test-local.mjs",
+    "verify:dry-run": "node scripts/verify.mjs --dry-run",
+    "deploy": "node scripts/deploy.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "solc": "0.8.30",
+    "viem": "2.56.3"
+  }
+}
