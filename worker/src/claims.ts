@@ -45,23 +45,29 @@ export async function getClaim(db: D1Database, id: string): Promise<ClaimRow | n
   return db.prepare("SELECT * FROM claims WHERE id = ?").bind(id).first<ClaimRow>();
 }
 
-// Compare-and-set on status so two concurrent proof submissions cannot both pay out.
-export async function transition(
+export async function compareAndSetStatus(
   db: D1Database,
   id: string,
   from: ClaimStatus[],
   to: ClaimStatus,
   now: number,
-  fields: { proof_type?: string; tx_hash?: Hex } = {},
+  fields: { proof_type?: string } = {},
 ): Promise<boolean> {
   const result = await db
     .prepare(
       `UPDATE claims
          SET status = ?, updated_at = ?,
-             proof_type = COALESCE(?, proof_type), tx_hash = COALESCE(?, tx_hash)
+             proof_type = COALESCE(?, proof_type)
        WHERE id = ? AND status IN (${from.map(() => "?").join(", ")})`,
     )
-    .bind(to, now, fields.proof_type ?? null, fields.tx_hash ?? null, id, ...from)
+    .bind(to, now, fields.proof_type ?? null, id, ...from)
     .run();
   return result.meta.changes === 1;
+}
+
+export async function recordPendingTxHash(db: D1Database, id: string, txHash: Hex, now: number): Promise<void> {
+  await db
+    .prepare("UPDATE claims SET tx_hash = ?, updated_at = ? WHERE id = ? AND status = 'verifying'")
+    .bind(txHash, now, id)
+    .run();
 }

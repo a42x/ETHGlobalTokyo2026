@@ -1,7 +1,8 @@
 import { encodeAbiParameters, keccak256, toBytes, type Address, type Hex } from "viem";
 
-// BenefitAgeGate.ORDER_DURATION: the gate requires expiresAt == referenceTime + 900.
-export const CLAIM_DURATION = 900;
+export const GATE_ORDER_DURATION = 900;
+
+export const GATE_MIN_AGE = 20;
 
 const U128_MASK = (1n << 128n) - 1n;
 
@@ -9,8 +10,6 @@ export function benefitKey(benefitId: string): Hex {
   return keccak256(toBytes(benefitId));
 }
 
-// Mirrors BenefitOffice.claimHash:
-// keccak256(abi.encode(block.chainid, address(this), benefitId, recipient, amountWei, minAge))
 export function computeClaimHash(p: {
   chainId: number;
   office: Address;
@@ -39,8 +38,6 @@ function split(value: Hex): [bigint, bigint] {
   return [n >> 128n, n & U128_MASK];
 }
 
-// Same layout as ZeroKeyMate ageArguments:
-// [hashHi, hashLo, nonceHi, nonceLo, rootHi, rootLo, referenceTime, expiresAt]
 export function publicInputs(p: {
   claimHash: Hex;
   nonce: Hex;

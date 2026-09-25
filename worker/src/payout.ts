@@ -9,8 +9,6 @@ export type PayoutRequest = {
   inputs: bigint[];
 };
 
-// Sends BenefitOffice.claim() from the operator EOA. The on-chain version replaces the
-// mock once BenefitOffice is deployed on Amoy.
 export interface Payout {
   send(req: PayoutRequest): Promise<Hex>;
   waitForReceipt(txHash: Hex): Promise<"success" | "reverted">;

@@ -1,10 +1,10 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { bytesToHex, getAddress, isAddress, parseUnits, zeroAddress, type Address, type Hex } from "viem";
+import { bytesToHex, getAddress, isAddress, isHex, parseUnits, size, zeroAddress, type Address, type Hex } from "viem";
 import { findBenefit, listBenefits, minAgeOf } from "./benefits";
-import { CLAIM_DURATION, computeClaimHash, publicInputs } from "./claim-hash";
-import { getClaim, insertClaim, transition, type ClaimRow } from "./claims";
+import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } from "./claim-hash";
+import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
 import type { Payout } from "./payout";
 import type { Verifier } from "./verify";
 
@@ -17,8 +17,6 @@ export type Deps = {
 
 type Env = { Bindings: Cloudflare.Env };
 
-const HEX32 = /^0x[0-9a-fA-F]{64}$/;
-const PROOF = /^0x[0-9a-fA-F]{768}$/;
 const UINT = /^(0|[1-9][0-9]*)$/;
 
 function originMatches(origin: string, pattern: string): boolean {
@@ -31,6 +29,10 @@ function apiError(c: Context, status: ContentfulStatusCode, code: string, messag
   return c.json({ error: { code, message } }, status);
 }
 
+function isBytes(value: unknown, bytes: number): value is Hex {
+  return typeof value === "string" && isHex(value, { strict: true }) && size(value) === bytes;
+}
+
 function address(value: string): Address {
   return value ? getAddress(value) : zeroAddress;
 }
@@ -39,7 +41,7 @@ function explorerUrl(txHash: Hex): string {
   return `https://amoy.polygonscan.com/tx/${txHash}`;
 }
 
-function claimView(env: Cloudflare.Env, row: ClaimRow, minAge: number, now: number) {
+function claimView(env: Cloudflare.Env, row: ClaimRow, now: number) {
   const expired = row.status === "pending_proof" && now >= row.expires_at;
   return {
     id: row.id,
@@ -55,7 +57,7 @@ function claimView(env: Cloudflare.Env, row: ClaimRow, minAge: number, now: numb
       referenceTime: row.reference_time,
       expiresAt: row.expires_at,
     },
-    claim: { type: "age_over", minAge },
+    claim: { type: "age_over", minAge: GATE_MIN_AGE },
     expires_at: new Date(row.expires_at * 1000).toISOString(),
     tx_hash: row.tx_hash,
     explorer_url: row.tx_hash ? explorerUrl(row.tx_hash) : null,
@@ -65,13 +67,14 @@ function claimView(env: Cloudflare.Env, row: ClaimRow, minAge: number, now: numb
 export function createApp(deps: Deps) {
   const app = new Hono<Env>();
 
-  app.use("*", (c, next) =>
+  app.use(
+    "*",
     cors({
-      origin: (origin) => {
-        const allowed = c.env.CORS_ORIGINS.split(",").map((s) => s.trim());
+      origin: (origin, c) => {
+        const allowed = (c.env as Cloudflare.Env).CORS_ORIGINS.split(",").map((s) => s.trim());
         return allowed.some((p) => originMatches(origin, p)) ? origin : null;
       },
-    })(c, next),
+    }),
   );
 
   app.get("/health", (c) => c.json({ ok: true }));
@@ -89,10 +92,7 @@ export function createApp(deps: Deps) {
     const chainId = Number(c.env.CHAIN_ID);
     const benefit = findBenefit(body.benefit_id, chainId);
     if (!benefit) return apiError(c, 404, "BENEFIT_NOT_FOUND", "Benefit not found");
-    const minAge = minAgeOf(benefit);
-    // The circuit only proves age >= 20, and BenefitOffice has no path for benefits
-    // without an age requirement yet.
-    if (benefit.status === "unsupported" || minAge !== 20) {
+    if (minAgeOf(benefit) !== GATE_MIN_AGE) {
       return apiError(c, 400, "BENEFIT_UNSUPPORTED", "This benefit cannot be claimed in the demo");
     }
 
@@ -109,25 +109,24 @@ export function createApp(deps: Deps) {
         benefitId: benefit.id,
         recipient,
         amountWei: parseUnits(benefit.amount, 18),
-        minAge,
+        minAge: GATE_MIN_AGE,
       }),
       nonce: bytesToHex(crypto.getRandomValues(new Uint8Array(32))),
       reference_time: now,
-      expires_at: now + CLAIM_DURATION,
+      expires_at: now + GATE_ORDER_DURATION,
       proof_type: null,
       tx_hash: null,
       created_at: now,
       updated_at: now,
     };
     await insertClaim(c.env.CLAIMS, row);
-    return c.json({ data: claimView(c.env, row, minAge, now) }, 201);
+    return c.json({ data: claimView(c.env, row, now) }, 201);
   });
 
   app.get("/benefit-office/v1/claims/:id", async (c) => {
     const row = await getClaim(c.env.CLAIMS, c.req.param("id"));
-    const benefit = row && findBenefit(row.benefit_id, Number(c.env.CHAIN_ID));
-    if (!row || !benefit) return apiError(c, 404, "CLAIM_NOT_FOUND", "Claim not found");
-    return c.json({ data: claimView(c.env, row, minAgeOf(benefit)!, deps.now()) });
+    if (!row) return apiError(c, 404, "CLAIM_NOT_FOUND", "Claim not found");
+    return c.json({ data: claimView(c.env, row, deps.now()) });
   });
 
   app.post("/benefit-office/v1/claims/:id/proof", async (c) => {
@@ -139,8 +138,8 @@ export function createApp(deps: Deps) {
     if (deps.now() >= row.expires_at) return apiError(c, 410, "CLAIM_EXPIRED", "Claim has expired");
 
     const body = await c.req.json().catch(() => null);
-    if (body?.proof_type !== "groth16" || typeof body.proof !== "string" || !PROOF.test(body.proof)
-        || typeof body.root_key_hash !== "string" || !HEX32.test(body.root_key_hash)
+    if (body?.proof_type !== "groth16" || !isBytes(body.proof, 384)
+        || !isBytes(body.root_key_hash, 32)
         || !Array.isArray(body.public_inputs) || body.public_inputs.length !== 8
         || !body.public_inputs.every((v: unknown) => typeof v === "string" && UINT.test(v))) {
       return apiError(c, 400, "INVALID_PROOF_FORMAT", "Expected a groth16 proof, root_key_hash and 8 public_inputs");
@@ -166,7 +165,7 @@ export function createApp(deps: Deps) {
     });
     if (!ok) return apiError(c, 403, "PROOF_REJECTED", "Age proof was rejected");
 
-    if (!(await transition(c.env.CLAIMS, id, ["pending_proof", "failed"], "verifying", deps.now(), { proof_type: "groth16" }))) {
+    if (!(await compareAndSetStatus(c.env.CLAIMS, id, ["pending_proof", "failed"], "verifying", deps.now(), { proof_type: "groth16" }))) {
       return c.json({ data: { id, status: "verifying" } }, 202);
     }
 
@@ -181,20 +180,22 @@ export function createApp(deps: Deps) {
         inputs,
       });
     } catch {
-      await transition(c.env.CLAIMS, id, ["verifying"], "failed", deps.now());
+      await compareAndSetStatus(c.env.CLAIMS, id, ["verifying"], "failed", deps.now());
       return apiError(c, 502, "PAYOUT_FAILED", "Failed to send the payout transaction");
     }
-    await transition(c.env.CLAIMS, id, ["verifying"], "verifying", deps.now(), { tx_hash: txHash });
+    await recordPendingTxHash(c.env.CLAIMS, id, txHash, deps.now());
 
     const settled = deps.payout
       .waitForReceipt(txHash)
       .catch(() => "reverted" as const)
       .then(async (result) => {
-        await transition(c.env.CLAIMS, id, ["verifying"], result === "success" ? "paid" : "failed", deps.now());
+        await compareAndSetStatus(c.env.CLAIMS, id, ["verifying"], result === "success" ? "paid" : "failed", deps.now());
         return result;
       });
-    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), deps.receiptWaitMs));
+    let timer = 0;
+    const timeout = new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), deps.receiptWaitMs)));
     const result = await Promise.race([settled, timeout]);
+    clearTimeout(timer);
 
     if (result === null) {
       c.executionCtx.waitUntil(settled);

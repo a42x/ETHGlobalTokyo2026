@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CLAIM_DURATION, publicInputs } from "../src/claim-hash";
+import { GATE_ORDER_DURATION, publicInputs } from "../src/claim-hash";
 
-// ZeroKeyMate services/shop/src/age.mjs ageArguments (Apache-2.0), kept verbatim as the
-// reference the gate's input checks were written against.
+// ZeroKeyMate services/shop/src/age.mjs ageArguments (Apache-2.0)
 function ageArguments(order: {
   orderHash: string;
   paymentNonce: string;
@@ -26,7 +25,7 @@ describe("publicInputs", () => {
     const nonce = "0xffffffffffffffffffffffffffffffff00000000000000000000000000000001" as const;
     const rootKeyHash = "0xa5fad04a2d6cbb52ce03a55106a6e23be4fa4a771bb0bf81401833afc410b15e" as const;
     const referenceTime = 1_790_000_000;
-    const expiresAt = referenceTime + CLAIM_DURATION;
+    const expiresAt = referenceTime + GATE_ORDER_DURATION;
 
     expect(publicInputs({ claimHash, nonce, rootKeyHash, referenceTime, expiresAt })).toEqual(
       ageArguments({ orderHash: claimHash, paymentNonce: nonce, ageRootKeyHash: rootKeyHash, createdAt: referenceTime, expiresAt }),
