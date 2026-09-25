@@ -11,12 +11,14 @@
 | --- | --- |
 | `BenefitAgeGate` (J-LIS) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
 | `BenefitAgeGateTestRoot` (合成データのルート) | [`0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8`](https://amoy.polygonscan.com/address/0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8) |
-| `BenefitOffice` (J-LIS の gate を使う) | [`0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) |
+| `BenefitOffice` (J-LIS の gate を使う) | [`0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104) |
 | `BenefitAgeGateJpkiTest` (テスト用 J-LIS、試験カード) | [`0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14`](https://amoy.polygonscan.com/address/0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14) |
-| `BenefitOffice` (試験カード用の gate を使う) | [`0x498b834190a565Bf30791C95d52F82bb6d9e91dC`](https://amoy.polygonscan.com/address/0x498b834190a565Bf30791C95d52F82bb6d9e91dC) |
+| `BenefitOffice` (試験カード用の gate を使う) | [`0x7fA6E5a6DB7A45d2514Beb7F30c5F542A0EBD09f`](https://amoy.polygonscan.com/address/0x7fA6E5a6DB7A45d2514Beb7F30c5F542A0EBD09f) |
 
 gate はどちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。
 2 つの `BenefitOffice` には、どちらも `youth-support-2026` (500 JPYC) を登録し、5,000 JPYC ずつ入れています。operator は、Worker の EOA が決まるまでデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+
+最初にデプロイした `BenefitOffice` (`0x91F11e24…2Bd0` と `0x498b8341…91dC`) には `resetPaid` がないので、JPYC を引き出して使うのをやめました。
 
 ## gate
 
@@ -50,6 +52,15 @@ gate は 2 種類あります。
 3. その受取人がその給付金をまだ受け取っていない (`paid[benefitId][recipient]`)。
 4. `claimHashOf(benefitId, recipient)` を自分で計算し、gate の `verifyClaimAge` が受理する。
 5. 受け取り済みにしてから、JPYC を送金する。
+
+`resetPaid(benefitId, recipient)` は、デモを撮り直すために受け取り済みの印を消します。owner だけが呼べます。
+owner が同じ受取人にもう一度給付できるようになるので、本番の給付窓口には入れてはいけません。
+
+```sh
+cast send 0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104 'resetPaid(bytes32,address)' \
+  "$(cast keccak youth-support-2026)" 0x… --rpc-url https://polygon-amoy-bor-rpc.publicnode.com \
+  --private-key "$AMOY_DEPLOYER_PRIVATE_KEY" --priority-gas-price 30gwei
+```
 
 `claimHash` は `keccak256(abi.encode(chainid, office, benefitId, recipient, amount, 20))` です。
 Worker の `worker/src/claim-hash.ts` と同じ値になることをテストで確かめています。
