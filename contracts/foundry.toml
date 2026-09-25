@@ -1,0 +1,13 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+libs = ["lib"]
+solc_version = "0.8.30"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+remappings = ["forge-std/=lib/forge-std/src/", "zk-age-verifier/=../zk-age-verifier/contracts/"]
+allow_paths = ["../zk-age-verifier"]
+fs_permissions = [{ access = "read", path = "../zk-age-verifier" }]
