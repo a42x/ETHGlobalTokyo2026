@@ -141,3 +141,20 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Secrets (never commit)
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+
+# ProveKit artifacts (too large / generated)
+.build/
+*.pkp
+*.pkv
+*.np
