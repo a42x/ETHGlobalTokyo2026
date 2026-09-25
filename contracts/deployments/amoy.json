@@ -1,0 +1,20 @@
+{
+  "chainId": 80002,
+  "deployer": "0x9aE507979F85d5B666313eA323f357209c871395",
+  "verifier": "0xb89d8e0c4a345ead852ab919548734c4f506596c",
+  "verifierCodeHash": "0x1c2885208409fc9edf78efd14a032ec311bc414c83d4cb66329a702bc647d650",
+  "BenefitAgeGate": {
+    "address": "0x176d7299c1a118356fdd8ed0d15a68b8fcf45803",
+    "transaction": "0xe37261c0d74417ad9a89c110db4dbf7b0ec564e6242d3dea6f2c8c8f7de9b6da",
+    "block": 48527013,
+    "gasUsed": 327436
+  },
+  "BenefitAgeGateTestRoot": {
+    "address": "0x1efb38fd54146806129a1090d1d4f7d2668bbfd8",
+    "transaction": "0xfbd03b92fe6f9224cd94eaa2006c2fbb58deb3e63ce41c6f69ee4b85a2983d81",
+    "block": 48527015,
+    "gasUsed": 316164,
+    "testRoot": "0x856b48145522368c129f328bf5de7d9ecd104b333116b134eabffc505ee17e91",
+    "testRootSource": "zk-age-verifier/fixtures/synthetic (ZeroKeyMate synthetic JPKI root, not a real card)"
+  }
+}
