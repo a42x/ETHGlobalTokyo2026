@@ -4,16 +4,17 @@ import { describe, expect, it } from "vitest";
 import { createApp, type Deps } from "../src/app";
 import { publicInputs } from "../src/claim-hash";
 import { mockPayout } from "../src/payout";
-import { mockVerifier } from "../src/verify";
+import type { Verifier } from "../src/verify";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
 const ROOT = "0xa5fad04a2d6cbb52ce03a55106a6e23be4fa4a771bb0bf81401833afc410b15e";
 const PROOF = "0x" + "ab".repeat(384);
+const acceptVerifier: Verifier = { verifyClaimAge: async () => true };
 
 function setup(overrides: Partial<Deps> = {}) {
   let clock = 1_790_000_000;
   const app = createApp({
-    verifier: mockVerifier,
+    verifier: acceptVerifier,
     payout: mockPayout,
     now: () => clock,
     receiptWaitMs: 50,
@@ -103,6 +104,21 @@ describe("claims", () => {
     const res = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
     expect(res.status).toBe(403);
     expect(res.json.error.code).toBe("PROOF_REJECTED");
+  });
+
+  it("returns 502 and keeps the claim pending when the verifier throws", async () => {
+    const { call } = setup({
+      verifier: {
+        verifyClaimAge: async () => {
+          throw new Error("RPC unreachable");
+        },
+      },
+    });
+    const claim = await createClaim(call);
+    const res = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(res.status).toBe(502);
+    expect(res.json.error.code).toBe("VERIFIER_UNAVAILABLE");
+    expect((await call("GET", `/benefit-office/v1/claims/${claim.id}`)).json.data.status).toBe("pending_proof");
   });
 
   it("rejects malformed proofs", async () => {
