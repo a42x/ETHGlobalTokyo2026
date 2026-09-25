@@ -1,6 +1,6 @@
 name = "benefit-office"
 main = "src/index.ts"
-compatibility_date = "2026-09-25"
+compatibility_date = "2026-08-22"
 compatibility_flags = ["nodejs_compat"]
 # ETHGlobal2026 account. Pinned so wrangler never falls back to the personal account.
 account_id = "cc425fa275d25e4909170bc8063c82e4"

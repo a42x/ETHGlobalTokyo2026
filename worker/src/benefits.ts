@@ -49,3 +49,11 @@ export function listBenefits(chainId: number): Benefit[] {
     },
   ];
 }
+
+export function findBenefit(id: string, chainId: number): Benefit | undefined {
+  return listBenefits(chainId).find((b) => b.id === id);
+}
+
+export function minAgeOf(benefit: Benefit): number | undefined {
+  return benefit.requirements.find((r) => r.type === "age_over")?.min_age;
+}
