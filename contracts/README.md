@@ -5,6 +5,15 @@
 - `src/BenefitAgeGate.sol`: 年齢証明を申請に結びつけて検証する gate です (#5)。
 - `BenefitOffice` はまだありません (#6)。
 
+## デプロイ済みのアドレス (Polygon Amoy, 80002)
+
+| コントラクト | アドレス |
+| --- | --- |
+| `BenefitAgeGate` (J-LIS) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
+| `BenefitAgeGateTestRoot` (合成データのルート) | [`0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8`](https://amoy.polygonscan.com/address/0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8) |
+
+どちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+
 ## gate
 
 `verifyClaimAge(claimHash, nonce, expiresAt, proof, inputs)` は、次のすべてを満たすときだけ `true` を返します。
