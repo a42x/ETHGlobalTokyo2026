@@ -7,9 +7,10 @@ account_id = "cc425fa275d25e4909170bc8063c82e4"
 
 [vars]
 CHAIN_ID = "80002"
-RPC_URL = "https://rpc-amoy.polygon.technology"
+RPC_URL = "https://polygon-amoy-bor-rpc.publicnode.com"
 BENEFIT_OFFICE_ADDRESS = ""
 BENEFIT_AGE_GATE_ADDRESS = ""
+AGE_VERIFIER_ADDRESS = "0xb89d8e0c4a345ead852ab919548734c4f506596c"
 JPYC_ADDRESS = "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29"
 CORS_ORIGINS = "https://miniapp-playground.web.app,https://miniapp-playground--*.web.app"
 AGENT_MODEL = "claude-opus-5"

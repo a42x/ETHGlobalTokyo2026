@@ -156,13 +156,18 @@ export function createApp(deps: Deps) {
     if (inputs.some((v, i) => v !== BigInt(body.public_inputs[i]))) {
       return apiError(c, 403, "PROOF_REJECTED", "public_inputs do not match this claim");
     }
-    const ok = await deps.verifier.verifyClaimAge({
-      claimHash: row.claim_hash,
-      nonce: row.nonce,
-      expiresAt: row.expires_at,
-      proof,
-      inputs,
-    });
+    let ok: boolean;
+    try {
+      ok = await deps.verifier.verifyClaimAge({
+        claimHash: row.claim_hash,
+        nonce: row.nonce,
+        expiresAt: row.expires_at,
+        proof,
+        inputs,
+      });
+    } catch {
+      return apiError(c, 502, "VERIFIER_UNAVAILABLE", "Could not reach the age verifier");
+    }
     if (!ok) return apiError(c, 403, "PROOF_REJECTED", "Age proof was rejected");
 
     if (!(await compareAndSetStatus(c.env.CLAIMS, id, ["pending_proof", "failed"], "verifying", deps.now(), { proof_type: "groth16" }))) {
