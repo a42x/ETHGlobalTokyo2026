@@ -16,5 +16,25 @@
     "gasUsed": 316164,
     "testRoot": "0x856b48145522368c129f328bf5de7d9ecd104b333116b134eabffc505ee17e91",
     "testRootSource": "zk-age-verifier/fixtures/synthetic (ZeroKeyMate synthetic JPKI root, not a real card)"
+  },
+  "BenefitOffice": {
+    "address": "0x91f11e24fd60c654814eef71bfb9d267b61e2bd0",
+    "gate": "0x176d7299c1a118356fdd8ed0d15a68b8fcf45803 (BenefitAgeGate, J-LIS)",
+    "transaction": "0x3050a491e220ecc70212e172a99a9aa3afe6cef05e636fbd0f190fc1277c9dee",
+    "block": 48528055,
+    "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
+    "jpyc": "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29",
+    "benefits": {
+      "youth-support-2026": {
+        "id": "0xab7d61ea757e2ca73a35cce44be9780742454bff7d5121d9ffe96a134c3ef529",
+        "amountWei": "500000000000000000000",
+        "minAge": 20
+      }
+    },
+    "initialFundingWei": "5000000000000000000000",
+    "otherTransactions": [
+      "0x6712c33679ab9284f7bdbb5da8bfab0e12dfcca1b5d2a0a231f658c6d3e4b7a5",
+      "0xa0dc633d8767efecc462ceb958fcf069b89bf44781236f6f47fbecfa4b8f43d6"
+    ]
   }
 }

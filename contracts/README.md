@@ -3,7 +3,7 @@
 給付金デモのコントラクトです (Foundry、Polygon Amoy)。
 
 - `src/BenefitAgeGate.sol`: 年齢証明を申請に結びつけて検証する gate です (#5)。
-- `BenefitOffice` はまだありません (#6)。
+- `src/BenefitOffice.sol`: gate が証明を受理したときだけ JPYC を給付するコントラクトです (#6)。
 
 ## デプロイ済みのアドレス (Polygon Amoy, 80002)
 
@@ -11,8 +11,10 @@
 | --- | --- |
 | `BenefitAgeGate` (J-LIS) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
 | `BenefitAgeGateTestRoot` (合成データのルート) | [`0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8`](https://amoy.polygonscan.com/address/0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8) |
+| `BenefitOffice` (J-LIS の gate を使う) | [`0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) |
 
-どちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+gate はどちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。
+`BenefitOffice` には `youth-support-2026` (500 JPYC) を登録し、5,000 JPYC を入れています。operator は、Worker の EOA が決まるまでデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
 
 ## gate
 
@@ -35,9 +37,36 @@ gate は 2 種類あります。
 
 ロジックは ZeroKeyMate の `contracts/src/MateAgeGate.sol` (Apache-2.0) から持ってきています。変えたのは、chain id (80002 と 31337)、関数名、テストルート版の追加の 3 点です。
 
+## BenefitOffice
+
+`claim(benefitId, recipient, nonce, expiresAt, proof, inputs)` は operator (給付窓口の Worker) だけが呼べます。
+次の順に確かめてから給付します。
+
+1. 給付金が登録されている。
+2. 受取人が 0 アドレスでない。
+3. その受取人がその給付金をまだ受け取っていない (`paid[benefitId][recipient]`)。
+4. `claimHashOf(benefitId, recipient)` を自分で計算し、gate の `verifyClaimAge` が受理する。
+5. 受け取り済みにしてから、JPYC を送金する。
+
+`claimHash` は `keccak256(abi.encode(chainid, office, benefitId, recipient, amount, 20))` です。
+Worker の `worker/src/claim-hash.ts` と同じ値になることをテストで確かめています。
+証明はこの `claimHash` に結びついているので、別の受取人や別の給付金には使い回せません。
+
+`registerBenefit` は、回路が 20 歳に固定されているため `minAge == 20` しか受け付けません。
+gate は constructor で固定します。gate を替えるときは `BenefitOffice` もデプロイし直します。
+
+```sh
+BENEFIT_AGE_GATE=0x… BENEFIT_OPERATOR=0x… BENEFIT_FUNDING=5000000000000000000000 \
+  forge script script/DeployBenefitOffice.s.sol --rpc-url https://polygon-amoy-bor-rpc.publicnode.com \
+  --private-key "$AMOY_DEPLOYER_PRIVATE_KEY" --broadcast --priority-gas-price 30gwei
+```
+
+`BENEFIT_OPERATOR` を省くと、デプロイしたアドレスが operator になります。あとで owner が `setOperator` で替えられます。
+`BENEFIT_FUNDING` は、デプロイしたアドレスの JPYC から送る額 (wei) です。
+
 ## 注意
 
-- 改ざんした証明を渡すと、Verifier のペアリング計算が失敗して、渡された gas を使い切ります。gate は `false` を返しますが、トランザクションの中で呼ぶ場合は、先に `eth_call` で確認してから送ってください。
+- 改ざんした証明を渡すと、Verifier のペアリング計算が失敗して、渡された gas を使い切ります。gate は `false` を返しますが、`BenefitOffice.claim()` を送る前に、同じ引数で `eth_call` して成功することを確かめてください。
 - 信頼の前提は `zk-age-verifier/README.md` と同じです。セットアップは単独実施で、未監査で、証明書の失効は確認しません。
 
 ## 使い方
