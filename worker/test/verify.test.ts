@@ -1,6 +1,6 @@
 import { createPublicClient, http } from "viem";
 import { describe, expect, it } from "vitest";
-import { groth16Verifier } from "../src/verify";
+import { gateVerifier, groth16Verifier } from "../src/verify";
 import proofHex from "./fixtures/proof.hex?raw";
 import secondProofHex from "./fixtures/second-proof.hex?raw";
 import inputsTxt from "./fixtures/inputs.txt?raw";
@@ -54,5 +54,52 @@ describe("groth16Verifier against the real Amoy deployment", () => {
 
   it("throws, rather than rejecting, when the RPC is unreachable", async () => {
     await expect(verifierAt("http://127.0.0.1:1").verifyClaimAge(check())).rejects.toThrow();
+  });
+});
+
+// Real gates on Amoy (contracts/deployments/amoy.json). The fixture is synthetic:
+// its root is the one pinned in BenefitAgeGateTestRoot, and it is valid from
+// referenceTime 1800000000 to expiresAt 1800000900, so the tests move block time there.
+const TEST_ROOT_GATE = "0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8";
+const JLIS_GATE = "0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803";
+const IN_WINDOW = { time: 1_800_000_100n };
+
+const join = (hi: bigint, lo: bigint) => `0x${((hi << 128n) | lo).toString(16).padStart(64, "0")}` as `0x${string}`;
+
+const bound = (overrides: Partial<{ claimHash: `0x${string}`; proof: `0x${string}` }> = {}) => ({
+  claimHash: overrides.claimHash ?? join(inputs[0], inputs[1]),
+  nonce: join(inputs[2], inputs[3]),
+  expiresAt: Number(inputs[7]),
+  proof: overrides.proof ?? proof,
+  inputs,
+});
+
+function gateAt(address: `0x${string}`, blockOverrides?: { time: bigint }, rpcUrl = AMOY_RPC) {
+  return gateVerifier(createPublicClient({ transport: http(rpcUrl) }), address, blockOverrides);
+}
+
+describe("gateVerifier against the real Amoy gates", () => {
+  it("accepts the fixture inside its time window on the gate that pins its root", async () => {
+    expect(await gateAt(TEST_ROOT_GATE, IN_WINDOW).verifyClaimAge(bound())).toBe(true);
+  });
+
+  it("rejects the fixture on the J-LIS gate, whose roots do not include it", async () => {
+    expect(await gateAt(JLIS_GATE, IN_WINDOW).verifyClaimAge(bound())).toBe(false);
+  });
+
+  it("rejects the fixture outside its time window", async () => {
+    expect(await gateAt(TEST_ROOT_GATE).verifyClaimAge(bound())).toBe(false);
+  });
+
+  it("rejects the fixture for another claim", async () => {
+    expect(await gateAt(TEST_ROOT_GATE, IN_WINDOW).verifyClaimAge(bound({ claimHash: ZERO_HASH }))).toBe(false);
+  });
+
+  it("rejects a tampered proof", async () => {
+    expect(await gateAt(TEST_ROOT_GATE, IN_WINDOW).verifyClaimAge(bound({ proof: flipByte(proof) }))).toBe(false);
+  });
+
+  it("throws, rather than rejecting, when the RPC is unreachable", async () => {
+    await expect(gateAt(TEST_ROOT_GATE, IN_WINDOW, "http://127.0.0.1:1").verifyClaimAge(bound())).rejects.toThrow();
   });
 });

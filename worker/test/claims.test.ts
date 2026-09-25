@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { createApp, type Deps } from "../src/app";
 import { publicInputs } from "../src/claim-hash";
-import { mockPayout } from "../src/payout";
+import { AlreadyPaidError, mockPayout } from "../src/payout";
 import type { Verifier } from "../src/verify";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
@@ -159,6 +159,29 @@ describe("claims", () => {
     expect(failed.json.error.code).toBe("PAYOUT_FAILED");
 
     receipt = "success";
+    const retried = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(retried.status).toBe(200);
+  });
+
+  it("returns 409 when the office has already paid this wallet, and allows a retry after a reset", async () => {
+    let alreadyPaid = true;
+    const { call } = setup({
+      payout: {
+        ...mockPayout,
+        send: async (req) => {
+          if (alreadyPaid) throw new AlreadyPaidError("paid");
+          return mockPayout.send(req);
+        },
+      },
+    });
+    const claim = await createClaim(call);
+
+    const refused = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(refused.status).toBe(409);
+    expect(refused.json.error.code).toBe("CLAIM_ALREADY_PAID");
+    expect((await call("GET", `/benefit-office/v1/claims/${claim.id}`)).json.data.status).toBe("failed");
+
+    alreadyPaid = false;
     const retried = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
     expect(retried.status).toBe(200);
   });
