@@ -36,5 +36,28 @@
       "0x6712c33679ab9284f7bdbb5da8bfab0e12dfcca1b5d2a0a231f658c6d3e4b7a5",
       "0xa0dc633d8767efecc462ceb958fcf069b89bf44781236f6f47fbecfa4b8f43d6"
     ]
+  },
+  "BenefitAgeGateJpkiTest": {
+    "address": "0x0662cdd6aea98ca840cb3001188be4efbb635a14",
+    "transaction": "0x538b87d08473857ea74fc97fd1e042a190acafbd2ac77f6c5f8c67fd65e2bfe6",
+    "block": 48542491,
+    "roots": "JPKI-TEST signing CAs sig_ca_8, sig_ca_1, sig_ca_14, sig_ca_10 (a42x/jpki-api certificates/development)"
+  },
+  "BenefitOfficeJpkiTest": {
+    "address": "0x498b834190a565bf30791c95d52f82bb6d9e91dc",
+    "gate": "0x0662cdd6aea98ca840cb3001188be4efbb635a14 (BenefitAgeGateJpkiTest)",
+    "transaction": "0xd65765cb22da7dfd13687d20904f33c44b1f224bc35d7bc9821264a0ee19d33d",
+    "block": 48542504,
+    "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
+    "benefits": {
+      "youth-support-2026": {
+        "id": "0xab7d61ea757e2ca73a35cce44be9780742454bff7d5121d9ffe96a134c3ef529",
+        "amountWei": "500000000000000000000",
+        "minAge": 20
+      }
+    },
+    "initialFundingWei": "5000000000000000000000",
+    "fundingTransaction": "0x7ef05e1589facc86e260979c05ae2eb6926ea1654d185928244e989680405c35",
+    "note": "the funding transfer inside the deploy script ran out of gas (0x61de3d7c\u2026); it was resent with a 150000 gas limit"
   }
 }

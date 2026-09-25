@@ -12,9 +12,11 @@
 | `BenefitAgeGate` (J-LIS) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
 | `BenefitAgeGateTestRoot` (合成データのルート) | [`0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8`](https://amoy.polygonscan.com/address/0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8) |
 | `BenefitOffice` (J-LIS の gate を使う) | [`0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) |
+| `BenefitAgeGateJpkiTest` (テスト用 J-LIS、試験カード) | [`0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14`](https://amoy.polygonscan.com/address/0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14) |
+| `BenefitOffice` (試験カード用の gate を使う) | [`0x498b834190a565Bf30791C95d52F82bb6d9e91dC`](https://amoy.polygonscan.com/address/0x498b834190a565Bf30791C95d52F82bb6d9e91dC) |
 
 gate はどちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。
-`BenefitOffice` には `youth-support-2026` (500 JPYC) を登録し、5,000 JPYC を入れています。operator は、Worker の EOA が決まるまでデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+2 つの `BenefitOffice` には、どちらも `youth-support-2026` (500 JPYC) を登録し、5,000 JPYC ずつ入れています。operator は、Worker の EOA が決まるまでデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
 
 ## gate
 
@@ -31,9 +33,10 @@ gate は 2 種類あります。
 | コントラクト | 受け付けるルート | 用途 |
 | --- | --- | --- |
 | `BenefitAgeGate` | J-LIS の本番ルート 2 つ (ZeroKeyMate の `MateAgeGate` と同じ) | 実際のカード |
-| `BenefitAgeGateTestRoot` | デプロイ時に指定したルート 1 つ | デモ専用。合成データの fixture や dev の試験カード |
+| `BenefitAgeGateTestRoot` | デプロイ時に指定したルート 1 つ | デモ専用。合成データの fixture |
+| `BenefitAgeGateJpkiTest` | テスト用 J-LIS の署名用ルート 4 つ (`a42x/jpki-api` の `certificates/development` の `sig_ca_8`、`sig_ca_1`、`sig_ca_14`、`sig_ca_10`) | デモ専用。マイナウォレット dev 環境の試験カード |
 
-`BenefitAgeGateTestRoot` が受理した証明は、実際のマイナンバーカードについては何も示しません。
+`BenefitAgeGateTestRoot` と `BenefitAgeGateJpkiTest` が受理した証明は、実際のマイナンバーカードについては何も示しません。
 
 ロジックは ZeroKeyMate の `contracts/src/MateAgeGate.sol` (Apache-2.0) から持ってきています。変えたのは、chain id (80002 と 31337)、関数名、テストルート版の追加の 3 点です。
 
@@ -58,9 +61,10 @@ gate は constructor で固定します。gate を替えるときは `BenefitOff
 ```sh
 BENEFIT_AGE_GATE=0x… BENEFIT_OPERATOR=0x… BENEFIT_FUNDING=5000000000000000000000 \
   forge script script/DeployBenefitOffice.s.sol --rpc-url https://polygon-amoy-bor-rpc.publicnode.com \
-  --private-key "$AMOY_DEPLOYER_PRIVATE_KEY" --broadcast --priority-gas-price 30gwei
+  --private-key "$AMOY_DEPLOYER_PRIVATE_KEY" --broadcast --priority-gas-price 30gwei --gas-estimate-multiplier 150
 ```
 
+forge の gas の見積もりは JPYC の送金には足りないことがあるので、`--gas-estimate-multiplier` で余裕を持たせます。
 `BENEFIT_OPERATOR` を省くと、デプロイしたアドレスが operator になります。あとで owner が `setOperator` で替えられます。
 `BENEFIT_FUNDING` は、デプロイしたアドレスの JPYC から送る額 (wei) です。
 
