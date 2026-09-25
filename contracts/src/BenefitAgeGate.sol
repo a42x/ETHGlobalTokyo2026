@@ -76,3 +76,25 @@ contract BenefitAgeGateTestRoot is BenefitAgeGate {
         return rootHash == testRoot;
     }
 }
+
+/// DEMO ONLY. Accepts the JPKI test-environment ("JPKI-TEST") signing roots
+/// that issue test My Number cards, and nothing else. A proof accepted here
+/// says nothing about a real card. Roots are the four currently valid
+/// self-signed test signing CAs in a42x/jpki-api certificates/development
+/// (sig_ca_8, sig_ca_1, sig_ca_14, sig_ca_10), hashed like the J-LIS pins:
+/// SHA-256 of the 256-byte big-endian RSA modulus.
+contract BenefitAgeGateJpkiTest is BenefitAgeGate {
+    constructor(address verifier_, bytes32 expectedCodeHash) BenefitAgeGate(verifier_, expectedCodeHash) {}
+
+    function _rootValid(bytes32 rootHash, uint256 start, uint256 end) internal pure override returns (bool) {
+        if (rootHash == 0x8a0336e52507e05b637f095492aee59d3d78823981bf9054ff28a93b727afa47)
+            return start >= 1552091889 && end <= 1867676399;
+        if (rootHash == 0x7b3b001af9630b60d7bc356383e0223e554785ddde24692953371a219eea7021)
+            return start >= 1563405277 && end <= 1878994799;
+        if (rootHash == 0x5b189b626b422dee7067e63d729b7c682f0fa30eed909a2537b95134f3c3f75d)
+            return start >= 1679537567 && end <= 1995116399;
+        if (rootHash == 0x91a09ca3b8f065d5462ef8e6a807d77612fc9db055af7f7769457e349595b5d1)
+            return start >= 1724883819 && end <= 2040389999;
+        return false;
+    }
+}
