@@ -158,3 +158,6 @@ contracts/broadcast/**/dry-run/
 *.pkp
 *.pkv
 *.np
+
+# Wrangler local state
+.wrangler/

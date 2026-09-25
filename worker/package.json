@@ -1,0 +1,22 @@
+{
+  "name": "benefit-office-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply benefit-office --local",
+    "db:migrate:remote": "wrangler d1 migrations apply benefit-office --remote"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "hono": "^4.13.9",
+    "viem": "^2.56.9"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "wrangler": "^4.140.0"
+  }
+}
