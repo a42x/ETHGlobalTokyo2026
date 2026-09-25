@@ -5,6 +5,7 @@ import { bytesToHex, getAddress, isAddress, isHex, parseUnits, size, zeroAddress
 import { findBenefit, listBenefits, minAgeOf } from "./benefits";
 import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } from "./claim-hash";
 import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
+import { agentRoutes, type Llm } from "./agent";
 import { AlreadyPaidError, type Payout } from "./payout";
 import type { Verifier } from "./verify";
 
@@ -13,6 +14,9 @@ export type Deps = {
   payout: Payout;
   now: () => number;
   receiptWaitMs: number;
+  /** null when ANTHROPIC_API_KEY is not configured; the agent route then answers 503. */
+  llm: Llm | null;
+  agentModel: string;
 };
 
 type Env = { Bindings: Cloudflare.Env };
@@ -224,6 +228,8 @@ export function createApp(deps: Deps) {
       },
     });
   });
+
+  app.route("/", agentRoutes(deps.llm, deps.agentModel));
 
   app.notFound((c) => apiError(c, 404, "NOT_FOUND", "Not found"));
 
