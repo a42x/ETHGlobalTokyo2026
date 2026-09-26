@@ -19,6 +19,8 @@ AGE_VERIFIER_ADDRESS = "0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078"
 JPYC_ADDRESS = "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29"
 CORS_ORIGINS = "https://miniapp-playground.web.app,https://miniapp-playground--*.web.app"
 AGENT_MODEL = "claude-opus-5"
+# Offer check_eligibility / verify_payment to the agent. Turn on only once the mini app runs them (#24).
+AGENT_ONCHAIN_TOOLS = "false"
 
 [[d1_databases]]
 binding = "CLAIMS"

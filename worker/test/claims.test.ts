@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createApp, type Deps } from "../src/app";
 import { publicInputs } from "../src/claim-hash";
 import { AlreadyPaidError, mockPayout } from "../src/payout";
+import type { OnchainReader } from "../src/onchain";
 import type { Verifier } from "../src/verify";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
@@ -206,3 +207,101 @@ describe("claims", () => {
     expect(res.json.error.code).toBe("CLAIM_NOT_FOUND");
   });
 });
+
+describe("chain reads (#24)", () => {
+  const eligibility = {
+    chain_id: 80002,
+    office_address: "0x00000000000000000000000000000000000000Aa",
+    token_address: "0x00000000000000000000000000000000000000Bb",
+    amount: "500",
+    office_balance: "3000",
+    already_received: false,
+    funded: true,
+    claimable: true,
+  } as const;
+
+  function reader(overrides: Partial<OnchainReader> = {}): OnchainReader {
+    return {
+      eligibility: async () => ({ ...eligibility }),
+      isPaid: async () => false,
+      checkPayment: async (txHash) => ({
+        tx_hash: txHash,
+        status: "success",
+        block_number: "123",
+        transfer: { from: eligibility.office_address, to: WALLET, amount: "500" },
+        confirmed: true,
+      }),
+      ...overrides,
+    };
+  }
+
+  it("refuses a claim before any card is read when the chain records a payout", async () => {
+    const { call } = setup({ onchain: reader({ isPaid: async () => true }) });
+    const res = await call("POST", "/benefit-office/v1/claims", { benefit_id: "youth-support-2026", wallet_address: WALLET });
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("CLAIM_ALREADY_PAID");
+  });
+
+  it("still creates the claim when the chain cannot be read, since the contract enforces it", async () => {
+    const { call } = setup({ onchain: reader({ isPaid: async () => Promise.reject(new Error("RPC down")) }) });
+    const res = await call("POST", "/benefit-office/v1/claims", { benefit_id: "youth-support-2026", wallet_address: WALLET });
+    expect(res.status).toBe(201);
+  });
+
+  it("returns eligibility read from the chain", async () => {
+    const { call } = setup({ onchain: reader() });
+    const res = await call("GET", `/benefit-office/v1/onchain/eligibility?benefit_id=youth-support-2026&wallet_address=${WALLET}`);
+    expect(res.status).toBe(200);
+    expect(res.json.data).toEqual({ benefit_id: "youth-support-2026", ...eligibility });
+  });
+
+  it.each([
+    ["no wallet", "?benefit_id=youth-support-2026", 400, "INVALID_REQUEST"],
+    ["bad wallet", "?benefit_id=youth-support-2026&wallet_address=0x12", 400, "INVALID_REQUEST"],
+    ["unknown benefit", `?benefit_id=nope&wallet_address=${WALLET}`, 404, "BENEFIT_NOT_FOUND"],
+  ])("rejects eligibility requests with %s", async (_label, query, status, code) => {
+    const { call } = setup({ onchain: reader() });
+    const res = await call("GET", `/benefit-office/v1/onchain/eligibility${query}`);
+    expect(res.status).toBe(status);
+    expect(res.json.error.code).toBe(code);
+  });
+
+  it("answers 503 without an office and 502 when the chain cannot be read", async () => {
+    const q = `?benefit_id=youth-support-2026&wallet_address=${WALLET}`;
+    expect((await setup().call("GET", `/benefit-office/v1/onchain/eligibility${q}`)).status).toBe(503);
+    const failing = setup({ onchain: reader({ eligibility: () => Promise.reject(new Error("RPC down")) }) });
+    const res = await failing.call("GET", `/benefit-office/v1/onchain/eligibility${q}`);
+    expect(res.status).toBe(502);
+    expect(res.json.error.code).toBe("CHAIN_UNAVAILABLE");
+  });
+
+  it("reports no payout before the claim has a transaction", async () => {
+    const { call } = setup({ onchain: reader() });
+    const claim = await createClaim(call);
+    const res = await call("GET", `/benefit-office/v1/claims/${claim.id}/onchain`);
+    expect(res.status).toBe(200);
+    expect(res.json.data).toMatchObject({ claim_id: claim.id, tx_hash: null, confirmed: false });
+  });
+
+  it("checks the payout transaction on chain for this claim's benefit and wallet", async () => {
+    const seen: unknown[] = [];
+    const { call } = setup({
+      onchain: reader({
+        checkPayment: async (txHash, benefitId, wallet) => {
+          seen.push([txHash, benefitId, wallet]);
+          return reader().checkPayment(txHash, benefitId, wallet);
+        },
+      }),
+    });
+    const claim = await createClaim(call);
+    const paid = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(paid.status).toBe(200);
+
+    const res = await call("GET", `/benefit-office/v1/claims/${claim.id}/onchain`);
+    expect(res.status).toBe(200);
+    expect(res.json.data).toMatchObject({ claim_id: claim.id, tx_hash: paid.json.data.tx_hash, confirmed: true, block_number: "123" });
+    expect(res.json.data.explorer_url).toContain(paid.json.data.tx_hash);
+    expect(seen).toEqual([[paid.json.data.tx_hash, "youth-support-2026", WALLET]]);
+  });
+});
+
