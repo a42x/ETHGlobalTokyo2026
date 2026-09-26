@@ -2,7 +2,11 @@
 
 **MynaAgent is an AI agent that runs as a mini app inside MynaWallet. Its first job is claiming public benefits for you. It proves with your My Number Card that you qualify, without revealing your birth date, and the benefit arrives in JPYC after a contract verifies the proof on-chain.**
 
-![MynaAgent, an AI agent that runs as a mini app inside MynaWallet and finds public benefits you are eligible for](docs/images/cover.jpg)
+<p align="center">
+  <img src="docs/images/demo-phone.gif" width="300" alt="Screen recording on an iPhone: the agent finds a benefit, the wallet asks for consent and the signing PIN, the card is read over NFC, the contract pays 500 JPYC, the payout shows on Polygonscan, and the wallet balance goes up">
+</p>
+
+A screen recording of the demo on an iPhone, played at 1.5x speed, with the wait while the phone makes the proof shortened.
 
 - **ETHGlobal page:** <https://ethglobal.com/showcase/mynaagent-hqgrm>
 - **Live:**
