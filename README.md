@@ -2,7 +2,6 @@
 
 **An AI agent in MynaWallet that finds government benefits you can receive and claims them for you, proving with your My Number Card that you are 20 or older without revealing your birth date, and receiving the payout in JPYC after the proof is verified on-chain.**
 
-- **Prize:** Curvegrid, Best AI Agent Project. See [how the project meets it](#prize-curvegrid-best-ai-agent-project).
 - **Live:**
   - The contracts are on Polygon Amoy (chain id 80002). For example, the [benefit office the demo uses](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) shows each payout.
   - The Worker is deployed. For example, [the benefits it offers](https://benefit-office.ethglobal2026.workers.dev/benefit-office/v1/benefits?lang=en) returns JSON. The Worker's root URL has no page and answers 404.
@@ -26,52 +25,38 @@ This repository holds the hackathon code for ETHGlobal Tokyo 2026: the benefit o
 
 The agent, the mini app and the wallet work in English and Japanese.
 
-Japan's government plans to let people use AI agents with the My Number Card, connecting AI to administrative systems (priority plan approved by the Cabinet on 2026-07-21, [CNET Japan](https://japan.cnet.com/article/35250805/)). This demo shows what such an agent can do while disclosing only what the office needs.
+Japan's government plans to let people use AI agents with the My Number Card, connecting AI to administrative systems (priority plan approved by the Cabinet on 2026-07-21, [CNET Japan](https://japan.cnet.com/article/35250805/)). About 104.5 million people, 84.3% of the population, hold a My Number Card (end of August 2026, [Ministry of Internal Affairs and Communications](https://www.soumu.go.jp/main_content/001090345.pdf)). This demo shows what such an agent can do while disclosing only what the office needs.
 
-## Prize: Curvegrid, Best AI Agent Project
+## How the agent acts on-chain
 
-The prize asks for AI agents that understand blockchain activity and take on-chain action, and it lists "policy-aware transaction agents" as an example. Myna Agent is one. It acts for the user, but a contract, not the agent's prompt, enforces the rules it acts under.
+The agent acts for the user on the chain, but a contract, not the agent's prompt, enforces the rules it acts under.
 
-### The prize's theme, in this repository
-
-| The prize asks for | How Myna Agent does it | Where |
+| What the agent does | How Myna Agent does it | Where |
 | --- | --- | --- |
-| **Taking on-chain action** | The agent's `submit_proof` tool makes the Worker send `BenefitOffice.claim()`. That transaction verifies the proof and transfers 500 JPYC. [Example](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33). | [`worker/src/agent.ts`](worker/src/agent.ts) (tools), [`worker/src/app.ts`](worker/src/app.ts) (`POST /benefit-office/v1/claims/:id/proof`), [`worker/src/payout.ts`](worker/src/payout.ts), [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol) |
-| **Understanding chain state** | The Worker reads the chain before each step that commits anything:<br>• `create_claim` refuses before any card is read if the office already records a payout for this wallet.<br>• `submit_proof` asks `BenefitAgeGate.verifyClaimAge` with `eth_call`, then simulates `claim()`, and sends only if both pass.<br>• A failure comes back to the agent as a named reason, such as `CLAIM_ALREADY_PAID` or `OFFICE_FUNDS_LOW`, which its prompt explains to the user. | [`worker/src/app.ts`](worker/src/app.ts), [`worker/src/verify.ts`](worker/src/verify.ts), [`worker/src/payout.ts`](worker/src/payout.ts) |
-| **Staying within policy** | The agent holds no key, no funds, no proof and no personal data. The operator key that sends the transaction can only call `claim()`.<br>The contract decides whether to pay:<br>• once per wallet<br>• only with a proof bound to this office, benefit, wallet and amount<br>• only inside the proof's 15-minute window<br>• only for a card under a trust root pinned in the gate<br>• only through the verifier code pinned in the gate | [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol), [`contracts/src/BenefitAgeGate.sol`](contracts/src/BenefitAgeGate.sol) |
-| **Reading the chain as its own tool** (not live yet) | We implemented and tested two more agent tools on the Worker: `check_eligibility` (the registered amount, the office balance and the paid flag, read on chain) and `verify_payment` (the receipt and the JPYC `Transfer` log of the payout). They are switched off with `AGENT_ONCHAIN_TOOLS = "false"` until the mini app can run them ([#24](https://github.com/a42x/ETHGlobalTokyo2026/issues/24)). The demo does not use them. | [`worker/src/onchain.ts`](worker/src/onchain.ts), `GET /benefit-office/v1/onchain/eligibility`, `GET /benefit-office/v1/claims/:id/onchain` |
+| **Acts on-chain** | The agent's `submit_proof` tool makes the Worker send `BenefitOffice.claim()`. That transaction verifies the proof and transfers 500 JPYC. [Example](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33). | [`worker/src/agent.ts`](worker/src/agent.ts) (tools), [`worker/src/app.ts`](worker/src/app.ts) (`POST /benefit-office/v1/claims/:id/proof`), [`worker/src/payout.ts`](worker/src/payout.ts), [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol) |
+| **Reads chain state first** | The Worker reads the chain before each step that commits anything:<br>• `create_claim` refuses before any card is read if the office already records a payout for this wallet.<br>• `submit_proof` asks `BenefitAgeGate.verifyClaimAge` with `eth_call`, then simulates `claim()`, and sends only if both pass.<br>• A failure comes back to the agent as a named reason, such as `CLAIM_ALREADY_PAID` or `OFFICE_FUNDS_LOW`, which its prompt explains to the user. | [`worker/src/app.ts`](worker/src/app.ts), [`worker/src/verify.ts`](worker/src/verify.ts), [`worker/src/payout.ts`](worker/src/payout.ts) |
+| **Stays within policy** | The agent holds no key, no funds, no proof and no personal data. The operator key that sends the transaction can only call `claim()`.<br>The contract decides whether to pay:<br>• once per wallet<br>• only with a proof bound to this office, benefit, wallet and amount<br>• only inside the proof's 15-minute window<br>• only for a card under a trust root pinned in the gate<br>• only through the verifier code pinned in the gate | [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol), [`contracts/src/BenefitAgeGate.sol`](contracts/src/BenefitAgeGate.sol) |
+| **Reads the chain as its own tool** (not live yet) | We implemented and tested two more agent tools on the Worker: `check_eligibility` (the registered amount, the office balance and the paid flag, read on chain) and `verify_payment` (the receipt and the JPYC `Transfer` log of the payout). They are switched off with `AGENT_ONCHAIN_TOOLS = "false"` until the mini app can run them ([#24](https://github.com/a42x/ETHGlobalTokyo2026/issues/24)). The demo does not use them. | [`worker/src/onchain.ts`](worker/src/onchain.ts), `GET /benefit-office/v1/onchain/eligibility`, `GET /benefit-office/v1/claims/:id/onchain` |
 
-### Code pointers for this prize
+### Where to look in the code
 
 The links are pinned to commit `b225434`, so the line numbers stay valid.
 
-| Prize theme | What the code does | Code |
+| What the agent does | What the code does | Code |
 | --- | --- | --- |
-| Taking on-chain action | The agent's tools, including `submit_proof` | [`worker/src/agent.ts` L103–L155](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L103-L155) |
-| Taking on-chain action | `submit_proof` on the Worker: check the proof with the gate, send `claim()`, wait for the receipt | [`worker/src/app.ts` L180–L279](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L180-L279) |
-| Taking on-chain action | Simulate `claim()`, then send it from the operator key | [`worker/src/payout.ts` L86–L136](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L86-L136) |
-| Understanding chain state | Refuse a claim the chain already paid, before any card is read | [`worker/src/app.ts` L110–L117](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L110-L117) |
-| Understanding chain state | Ask `BenefitAgeGate.verifyClaimAge` with `eth_call` | [`worker/src/verify.ts` L27–L38](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/verify.ts#L27-L38) |
-| Understanding chain state | Turn a reverted simulation into a reason the agent can explain | [`worker/src/payout.ts` L51–L66](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L51-L66) |
-| Understanding chain state | The agent's instructions, including what to say for each failure code | [`worker/src/agent.ts` L34–L47](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L34-L47) |
-| Staying within policy | The LLM proxy: the system prompt and the tools are fixed on the server | [`worker/src/agent.ts` L290–L301](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L290-L301) |
-| Staying within policy | `BenefitOffice.claim()`: operator only, once per wallet, recompute `claimHash`, verify through the gate, pay JPYC | [`contracts/src/BenefitOffice.sol` L76–L94](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitOffice.sol#L76-L94) |
-| Staying within policy | `BenefitAgeGate`: pinned verifier code hash, claim binding, time window, pinned trust roots | [`contracts/src/BenefitAgeGate.sol` L22–L57](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitAgeGate.sol#L22-L57) |
-| Reading the chain as its own tool (not live yet) | Tool definitions, the chain reader, and the two endpoints | [`worker/src/agent.ts` L198–L221](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L198-L221), [`worker/src/onchain.ts` L47–L99](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/onchain.ts#L47-L99), [`worker/src/app.ts` L150–L178](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L150-L178) |
+| Acts on-chain | The agent's tools, including `submit_proof` | [`worker/src/agent.ts` L103–L155](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L103-L155) |
+| Acts on-chain | `submit_proof` on the Worker: check the proof with the gate, send `claim()`, wait for the receipt | [`worker/src/app.ts` L180–L279](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L180-L279) |
+| Acts on-chain | Simulate `claim()`, then send it from the operator key | [`worker/src/payout.ts` L86–L136](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L86-L136) |
+| Reads chain state first | Refuse a claim the chain already paid, before any card is read | [`worker/src/app.ts` L110–L117](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L110-L117) |
+| Reads chain state first | Ask `BenefitAgeGate.verifyClaimAge` with `eth_call` | [`worker/src/verify.ts` L27–L38](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/verify.ts#L27-L38) |
+| Reads chain state first | Turn a reverted simulation into a reason the agent can explain | [`worker/src/payout.ts` L51–L66](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L51-L66) |
+| Reads chain state first | The agent's instructions, including what to say for each failure code | [`worker/src/agent.ts` L34–L47](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L34-L47) |
+| Stays within policy | The LLM proxy: the system prompt and the tools are fixed on the server | [`worker/src/agent.ts` L290–L301](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L290-L301) |
+| Stays within policy | `BenefitOffice.claim()`: operator only, once per wallet, recompute `claimHash`, verify through the gate, pay JPYC | [`contracts/src/BenefitOffice.sol` L76–L94](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitOffice.sol#L76-L94) |
+| Stays within policy | `BenefitAgeGate`: pinned verifier code hash, claim binding, time window, pinned trust roots | [`contracts/src/BenefitAgeGate.sol` L22–L57](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitAgeGate.sol#L22-L57) |
+| Reads the chain as its own tool (not live yet) | Tool definitions, the chain reader, and the two endpoints | [`worker/src/agent.ts` L198–L221](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L198-L221), [`worker/src/onchain.ts` L47–L99](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/onchain.ts#L47-L99), [`worker/src/app.ts` L150–L178](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L150-L178) |
 
 The agent loop that runs these tools in the browser is in the agent mini app (a42x/miniapp-playground, private). It keeps the proof out of the conversation.
-
-### The prize's submission requirements
-
-| Requirement | Where |
-| --- | --- |
-| One-sentence summary | The top of this README |
-| Contracts | [`contracts/src/`](contracts/src/) and [`zk-age-verifier/contracts/Verifier.sol`](zk-age-verifier/contracts/Verifier.sol) |
-| Tests | [`contracts/test/`](contracts/test/) (Foundry, including a fork test against the deployed verifier), [`zk-age-verifier/scripts/test-local.mjs`](zk-age-verifier/scripts/test-local.mjs) (valid and tampered proofs on a local chain), [`worker/test/`](worker/test/) (Vitest; some tests read Amoy) |
-| Documentation | This README, [`docs/submission-zk.md`](docs/submission-zk.md), [`contracts/README.md`](contracts/README.md), [`zk-age-verifier/README.md`](zk-age-verifier/README.md) |
-| Team introduction with handles | [Team](#team) |
-| Setup and testing | [Setup and testing](#setup-and-testing) |
-| How MultiBaas was used | Not used. See [MultiBaas](#multibaas). |
 
 ## Architecture
 
@@ -257,10 +242,6 @@ npx wrangler dev
 ```
 
 Without `OPERATOR_PRIVATE_KEY` the Worker refuses to pay (`PAYOUT_MISCONFIGURED`, 503). Other payout failures come back as `OPERATOR_FUNDS_LOW`, `OFFICE_FUNDS_LOW` or `PAYOUT_FAILED` with a reason, and are logged. Without `ANTHROPIC_API_KEY` the agent route answers `503`, and the mini app falls back to a scripted agent.
-
-## MultiBaas
-
-We did not use MultiBaas. The Worker reads from and writes to Polygon Amoy with viem over a public RPC.
 
 ## Known limitations
 
