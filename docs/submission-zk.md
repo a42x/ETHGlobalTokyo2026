@@ -1,8 +1,8 @@
 # Submission notes: the ZK age proof and the contracts
 
-This covers the zero-knowledge and on-chain part of the demo. The agent mini app and its conversation are described separately.
+This covers the zero-knowledge and on-chain part of the demo. The agent side (the mini app, the Worker and how they fit together) is in the [README](../README.md).
 
-Status as of 2026-09-26 15:30 JST.
+Status as of 2026-09-26 17:55 JST.
 
 ## Summary
 
@@ -13,7 +13,7 @@ A MynaWallet user proves "I am 20 or older" with their physical My Number card, 
 With a real My Number card (issued under the production J-LIS roots) on an iPhone 16 Pro:
 
 1. The MynaWallet development build read the card's signing certificate over NFC. The card signed a message containing the claim hash and a nonce issued by the benefit office.
-2. The phone generated the proof locally. The birth date, the certificate and the card signature did not leave the device.
+2. The phone generated the proof locally. The birth date, the certificate and the card signature did not leave the device. (These runs came before the card-owner check described below.)
 3. `BenefitOffice.claim()` on Amoy had `BenefitAgeGate` check the proof, then transferred 500 JPYC to the wallet in the same transaction.
 4. A second claim for the same wallet was refused with `AlreadyPaid()`. The server that plays the benefit office simulates each claim before sending it, so no transaction was sent.
 
@@ -24,7 +24,9 @@ With a JPKI-TEST card (the test environment that MynaWallet's development backen
 1. Before proving, the app had MynaWallet's backend check the card with the JPKI service against the logged-in user's identity record.
    - A test card that did not belong to the wallet's owner was stopped at this step (`card_owner_mismatch`), before any proof was made.
    - The card that did belong to the owner passed.
+   - For this check, the app sends the signing certificate and a separate card signature, made over the backend's own challenge, to MynaWallet's backend. The benefit office never receives them.
 2. The phone proved the claim with the new proving key. `BenefitAgeGateJpkiTest` accepted it, and `BenefitOffice` paid 500 JPYC to the wallet ([transaction](https://amoy.polygonscan.com/tx/0x6c877a40f71bc08bccb8bb9da36d1fba25512501490d6fdd4661df22df761ec9)).
+3. Later, a claim for the same wallet ran through the agent. The user asked the agent in the MynaWallet mini app for benefits. The agent called `search_benefits`, `create_claim` and `submit_proof`. The Worker checked the proof with the gate and sent `claim()` from its operator key, and the office paid 500 JPYC ([transaction](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33), block 48581208).
 
 We also replayed a recorded proof on an Amoy fork, with the clock set back to its validity window. That proof came from a real card, so it is not committed (no real-card data goes into this repository), and this table cannot be rerun from the repository. The repository's fork test (`contracts/test/BenefitAgeGateAmoyFork.t.sol`) checks the deployed verifier through the gates with the synthetic fixture instead.
 

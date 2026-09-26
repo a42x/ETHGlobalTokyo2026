@@ -1,96 +1,96 @@
 # zk-age-verifier
 
-マイナンバーカード (JPKI) 由来の「20 歳以上」の Groth16 証明を、Polygon Amoy (chain id 80002) で検証するコントラクトです。
-ETHGlobal Tokyo 2026 の給付金デモ用で、テストネット専用です。
+The contract that verifies, on Polygon Amoy (chain id 80002), a Groth16 proof that a My Number Card (JPKI) holder is 20 or older.
+It is for the ETHGlobal Tokyo 2026 benefit demo and is testnet only.
 
-このディレクトリは Verifier 単体だけを扱います。給付金の申請に証明を結びつける gate は別に作ります。
+This directory covers only the verifier. The gate that binds a proof to a benefit claim is in `contracts/`.
 
-## デプロイ済みのアドレス
+## Deployed address
 
-| chain | Verifier |
+| Chain | Verifier |
 | --- | --- |
 | Polygon Amoy (80002) | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
 
-デプロイの記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+The deployment record is in [deployments/amoy.json](deployments/amoy.json).
 
-2026-09-26 に、試験カード (JPKI-TEST) も証明できる回路に作り直しました (v2)。
-- 試験カードの署名用証明書は、証明書ポリシーの OID だけが本番と違います (本番 1.2.392.200149.8.5.1.**1**.20、試験 1.2.392.200149.8.5.1.**0**.20)。v2 の回路はどちらも受け付けます。
-- 本番の証明か試験の証明かは、今までどおり gate が固定するルート鍵で分かれます (本番の J-LIS の gate は、試験のルートを通しません)。
-- 前の Verifier `0xb89d8e0c…596c` の記録は [deployments/amoy-v1.json](deployments/amoy-v1.json) にあります。
+On 2026-09-26 we rebuilt the circuit so that it can also prove test cards (JPKI-TEST). This is v2.
+- A test card's signing certificate differs from a production one only in the certificate policy OID (production 1.2.392.200149.8.5.1.**1**.20, test 1.2.392.200149.8.5.1.**0**.20). The v2 circuit accepts both.
+- As before, the root key each gate pins decides whether a proof counts as production or test. The production J-LIS gate does not accept the test roots.
+- The record of the previous verifier, `0xb89d8e0c…596c`, is in [deployments/amoy-v1.json](deployments/amoy-v1.json).
 
-## 使い方
+## Usage
 
-Node 22 以上と [Foundry](https://getfoundry.sh/) の `anvil` が必要です。
+You need Node 22 or later and `anvil` from [Foundry](https://getfoundry.sh/).
 
 ```sh
 npm ci
-npm test                # ローカルの anvil (chain id 80002) に使い捨ての鍵でデプロイして検証する
-npm run verify:dry-run  # Amoy の実ノードで state override を使って検証する。何もデプロイしない
+npm test                # deploys to a local anvil (chain id 80002) with a disposable key and verifies
+npm run verify:dry-run  # verifies against a real Amoy node with a state override; deploys nothing
 ```
 
-Amoy へのデプロイは、テストネット専用の使い捨ての鍵に faucet の POL を入れて行います。gas は約 133 万です。
-鍵は環境変数からだけ読み、ファイルには書きません。
+To deploy to Amoy, fund a disposable, testnet-only key with POL from a faucet. The deployment uses about 1.31 million gas (1,314,611 for v2, recorded in `deployments/amoy.json`).
+The key is read only from an environment variable and is never written to a file.
 
 ```sh
-AMOY_DEPLOYER_PRIVATE_KEY=0x… npm run deploy   # deployments/amoy.json に記録する。記録があれば二重デプロイを拒否する
-npm run verify                                  # 記録したアドレスで検証する
+AMOY_DEPLOYER_PRIVATE_KEY=0x… npm run deploy   # records to deployments/amoy.json; refuses to deploy twice if a record exists
+npm run verify                                  # verifies at the recorded address
 ```
 
-Amoy の priority fee の推奨値は、実際に取り込まれている値よりかなり高いことがあります。
-`AMOY_PRIORITY_FEE_GWEI=30` のように指定すると、その値でデプロイします。
+Amoy's suggested priority fee can be much higher than what actually gets included.
+Set, for example, `AMOY_PRIORITY_FEE_GWEI=30` to deploy with that value.
 
-RPC の既定値は `https://polygon-amoy-bor-rpc.publicnode.com` で、`AMOY_RPC_URL` で上書きできます。
-`--dry-run` には `eth_call` の state override に対応した RPC が必要です。
+The default RPC is `https://polygon-amoy-bor-rpc.publicnode.com`; override it with `AMOY_RPC_URL`.
+`--dry-run` needs an RPC that supports state overrides in `eth_call`.
 
-## 検証していること
+## What the scripts check
 
-各コマンドで、次のすべてを確認します。
+Each command checks all of the following:
 
-- 合成データの正しい証明 2 つ (同じ witness から作った別の乱数の証明) が通る。
-- 1 バイト改ざんした証明が拒否される。
-- 8 つの公開入力を 1 つずつ変えた 8 通りがすべて拒否される。
-- デプロイしたコードがコンパイル結果と一致する (`test`、`deploy`、`verify`)。
+- Two valid synthetic proofs (from the same witness, with different randomness) pass.
+- A proof with one byte changed is rejected.
+- All 8 variants, each changing one of the 8 public inputs, are rejected.
+- The deployed code matches the compiler output (`test`, `deploy`, `verify`).
 
-拒否として数えるのは revert だけです。通信エラーは失敗として止まります。
+Only a revert counts as a rejection. A network error stops the run as a failure.
 
-## Verifier の関数
+## The verifier function
 
 ```solidity
 function verifyProof(bytes calldata proof, uint256[8] calldata inputs) external view;
 ```
 
-正しければ何も返さず、正しくなければ revert します。`proof` は 384 バイトです。
-公開入力の並びは ZeroKeyMate の `jpki_age` 回路と同じです。
+It returns nothing when the proof is valid and reverts when it is not. `proof` is 384 bytes.
+The public inputs are in the same order as in ZeroKeyMate's `jpki_age` circuit.
 
-| index | 内容 |
+| Index | Content |
 | --- | --- |
-| 0, 1 | 注文 (申請) ハッシュの上位 128 bit、下位 128 bit |
-| 2, 3 | nonce の上位 128 bit、下位 128 bit |
-| 4, 5 | 署名元ルート鍵の SHA-256 の上位 128 bit、下位 128 bit |
-| 6 | 基準時刻 (unix 秒) |
-| 7 | 有効期限 (unix 秒) |
+| 0, 1 | Order (claim) hash, high and low 128 bits |
+| 2, 3 | Nonce, high and low 128 bits |
+| 4, 5 | SHA-256 of the signing root key, high and low 128 bits |
+| 6 | Reference time (unix seconds) |
+| 7 | Expiry (unix seconds) |
 
-Verifier は証明と公開入力の整合だけを確かめます。
-ルート鍵が本物の J-LIS か、ハッシュが申請に一致するか、期限内かは確かめません。これは gate の役目です。
+The verifier checks only that the proof and the public inputs are consistent.
+It does not check that the root key is a real J-LIS root, that the hash matches a claim, or that the proof is within its window. That is the gate's job.
 
-## 信頼の前提
+## Trust assumptions
 
-- **トラステッドセットアップは単独実施です。** 1 台のマシンで 1 回だけ行ったもので、マルチパーティのセレモニーではありません。
-  セットアップの乱数を持つ人は偽の証明を作れます。
-- **未監査です。** ProveKit の Groth16 バックエンドと Solidity の verifier は、上流でも実験段階で監査されていません。
-- **証明書の失効は確認しません。**
-- **身元は証明しません。** 証明が示すのは、J-LIS の署名用証明書のプロファイルを満たすカードの持ち主が 20 歳以上であることだけです。
-- **fixtures は合成データです。** `fixtures/synthetic/` の証明は、公開の合成証明書から作ったもので、実際のカードのデータは入っていません。
-  実際のカードで作った証明や、カードから読んだデータは、このリポジトリに入れないでください。
+- **Single-party trusted setup.** The setup was run once on one machine, not in a multi-party ceremony.
+  Whoever held the setup randomness could forge proofs.
+- **Unaudited.** ProveKit's Groth16 backend and the Solidity verifier are experimental upstream and have not been audited.
+- **No revocation check.** Certificate revocation is not checked.
+- **No identity.** A proof shows only that the holder of a card whose certificate meets the J-LIS signing certificate profile is 20 or older.
+- **Synthetic fixtures.** The proofs in `fixtures/synthetic/` were made from public synthetic certificates and contain no real card data.
+  Do not add proofs made with a real card, or any data read from a card, to this repository.
 
-## 出典
+## Sources
 
-- 回路、セットアップ、Verifier の作り方は [susumutomita/ZeroKeyMate](https://github.com/susumutomita/ZeroKeyMate) (Apache-2.0) から持ってきています。
-- `contracts/Verifier.sol` は [worldfnd/provekit](https://github.com/worldfnd/provekit) の revision `dd237e542403302186c8de4bd10df6e5c9b6725a` の `export-solidity` で出力したもので、MIT ライセンスです ([PROVEKIT-LICENSE.md](PROVEKIT-LICENSE.md))。
-  - 出力時には ZeroKeyMate の隠蔽用パッチ `provekit-groth16-hiding.patch` (SHA-256 `6ea38e8eec3f7631955794d164fcf97052c14652e641119735d066dda8b92db5`) を当てています。
-  - メモリ境界の修正 (`scripts/patch-age-verifier.py`) も当てています。
-  - 回路は ZeroKeyMate のブランチ [`eth/jpki-test-policy`](https://github.com/susumutomita/ZeroKeyMate/tree/eth/jpki-test-policy) (commit [`d24fafc`](https://github.com/susumutomita/ZeroKeyMate/commit/d24fafc97ac11c50e46ff240fb3d08ea82143a73)) で、`certificate.nr` のポリシーの確認だけを変えています。main の固定 (`config/age-runtime-pins.json`) は変えていません。
-  - 検証鍵は `age.pkv` (SHA-256 `07e6a671d3b5dfce8b28a3e1b1c3dbd465310cb3a7996ef6f97cf8f8b1c62cd2`)、証明鍵は `age.pkp` (SHA-256 `71294569bfc1f0492128fa320dcd7bb97a292bd8e81940ea5de6bb16b99b3931`) です。鍵はリポジトリに入れていません。
-- `contracts/Verifier.sol` の SHA-256 は `ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe` です。
-  `scripts/lib.mjs` がコンパイル前にこの値を確認します。
-- コンパイラは solc 0.8.30 で、optimizer 200、viaIR、EVM バージョン cancun です。
+- The circuit, the setup and the way the verifier is built come from [susumutomita/ZeroKeyMate](https://github.com/susumutomita/ZeroKeyMate) (Apache-2.0).
+- `contracts/Verifier.sol` was generated with `export-solidity` from [worldfnd/provekit](https://github.com/worldfnd/provekit) at revision `dd237e542403302186c8de4bd10df6e5c9b6725a`, under the MIT license ([PROVEKIT-LICENSE.md](PROVEKIT-LICENSE.md)).
+  - It was generated with ZeroKeyMate's masking patch `provekit-groth16-hiding.patch` (SHA-256 `6ea38e8eec3f7631955794d164fcf97052c14652e641119735d066dda8b92db5`) applied.
+  - A memory-bounds fix (`scripts/patch-age-verifier.py`) is also applied.
+  - The circuit is from ZeroKeyMate's branch [`eth/jpki-test-policy`](https://github.com/susumutomita/ZeroKeyMate/tree/eth/jpki-test-policy) (commit [`d24fafc`](https://github.com/susumutomita/ZeroKeyMate/commit/d24fafc97ac11c50e46ff240fb3d08ea82143a73)), which changes only the policy check in `certificate.nr`. The pins on main (`config/age-runtime-pins.json`) are unchanged.
+  - The verifying key is `age.pkv` (SHA-256 `07e6a671d3b5dfce8b28a3e1b1c3dbd465310cb3a7996ef6f97cf8f8b1c62cd2`), and the proving key is `age.pkp` (SHA-256 `71294569bfc1f0492128fa320dcd7bb97a292bd8e81940ea5de6bb16b99b3931`). The keys are not in this repository.
+- The SHA-256 of `contracts/Verifier.sol` is `ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe`.
+  `scripts/lib.mjs` checks this value before compiling.
+- The compiler is solc 0.8.30 with optimizer 200, viaIR and EVM version cancun.
