@@ -8,7 +8,7 @@ import {encodeFunctionData} from 'viem';
 export const root = path.resolve(import.meta.dirname, '..');
 export const AMOY_CHAIN_ID = 80002;
 export const AMOY_RPC = 'https://polygon-amoy-bor-rpc.publicnode.com';
-export const VERIFIER_SHA256 = '001ede90029f4186ebbe733d4ef245b8f6167680b87af08002ef176839a85aff';
+export const VERIFIER_SHA256 = 'ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe';
 export const SETTINGS = {optimizer: {enabled: true, runs: 200}, evmVersion: 'cancun', viaIR: true};
 
 const read = (...parts) => readFileSync(path.join(root, ...parts), 'utf8');
