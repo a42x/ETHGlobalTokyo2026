@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { AGENT_TOOLS, type Llm } from "../src/agent";
+import { AGENT_SYSTEM, AGENT_SYSTEM_EN, AGENT_TOOLS, AGENT_TOOLS_EN, type Llm } from "../src/agent";
 import { createApp, type Deps } from "../src/app";
 import { mockPayout } from "../src/payout";
 
@@ -81,5 +81,71 @@ describe("POST /agent/v1/messages", () => {
     })(body);
     expect(failing.status).toBe(502);
     expect(failing.json.error.code).toBe("AGENT_UPSTREAM_ERROR");
+  });
+
+  describe("locale", () => {
+    const systemTexts = (params: Anthropic.MessageCreateParamsNonStreaming | undefined) =>
+      (params?.system as Anthropic.TextBlockParam[]).map((b) => b.text);
+    const toolDescriptions = (params: Anthropic.MessageCreateParamsNonStreaming | undefined) =>
+      params?.tools?.map((t) => (t as Anthropic.Tool).description);
+
+    async function send(extra: Record<string, unknown>) {
+      let seen: Anthropic.MessageCreateParamsNonStreaming | undefined;
+      const call = setup(async (params) => {
+        seen = params;
+        return reply;
+      });
+      const { status } = await call({ messages: [{ role: "user", content: "hi" }], wallet_address: WALLET, ...extra });
+      expect(status).toBe(200);
+      return seen;
+    }
+
+    it("sends the English system prompt and tool descriptions for locale 'en'", async () => {
+      const seen = await send({ locale: "en" });
+      const system = seen?.system as Anthropic.TextBlockParam[];
+      expect(system[0].text).toBe(AGENT_SYSTEM_EN);
+      expect(system[0].cache_control).toEqual({ type: "ephemeral" });
+      expect(system[1].text).toBe(`User's wallet address: ${WALLET}`);
+      expect(system[1].cache_control).toBeUndefined();
+      expect(seen?.tools).toEqual(AGENT_TOOLS_EN);
+      expect(toolDescriptions(seen)?.join("\n")).not.toMatch(/[\u3040-\u30ff]/);
+      expect(AGENT_SYSTEM_EN).not.toMatch(/[\u3040-\u30ff]/);
+    });
+
+    it.each([
+      ["missing", {}],
+      ["ja", { locale: "ja" }],
+      ["unknown", { locale: "fr" }],
+      ["non-string", { locale: 1 }],
+    ])("keeps the Japanese prompt when locale is %s", async (_label, extra) => {
+      const seen = await send(extra);
+      const system = seen?.system as Anthropic.TextBlockParam[];
+      expect(systemTexts(seen)).toEqual([AGENT_SYSTEM, `ユーザーのウォレットアドレス: ${WALLET}`]);
+      expect(system[0].cache_control).toEqual({ type: "ephemeral" });
+      expect(seen?.tools).toEqual(AGENT_TOOLS);
+    });
+
+    it("offers the same tools with the same schemas in both languages", () => {
+      expect(AGENT_TOOLS_EN.map((t) => t.name)).toEqual(AGENT_TOOLS.map((t) => t.name));
+      expect(AGENT_TOOLS_EN.map((t) => t.input_schema.required)).toEqual(AGENT_TOOLS.map((t) => t.input_schema.required));
+      expect(AGENT_TOOLS_EN.map((t) => Object.keys(t.input_schema.properties ?? {}))).toEqual(
+        AGENT_TOOLS.map((t) => Object.keys(t.input_schema.properties ?? {})),
+      );
+    });
+
+    it("explains every age proof error, including the -32045 reasons, in both prompts", () => {
+      for (const prompt of [AGENT_SYSTEM, AGENT_SYSTEM_EN]) {
+        for (const code of ["4001", "-32041", "-32042", "-32044", "-32045", "CLAIM_ALREADY_PAID", "card_owner_mismatch", "certificate_revoked"]) {
+          expect(prompt).toContain(code);
+        }
+      }
+      expect(AGENT_SYSTEM).toContain("返答は必ず日本語で");
+      expect(AGENT_SYSTEM_EN).toContain("Always reply in English");
+      expect(AGENT_SYSTEM_EN).toContain("Would you like to prove it with your My Number Card?");
+      expect(AGENT_SYSTEM_EN).toContain("card belongs to someone other than the owner of this wallet");
+      expect(AGENT_SYSTEM_EN).toContain("certificate has been revoked");
+      expect(AGENT_SYSTEM).toContain("別の人のカード");
+      expect(AGENT_SYSTEM).toContain("証明書が失効");
+    });
   });
 });

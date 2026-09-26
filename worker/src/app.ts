@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { bytesToHex, getAddress, isAddress, isHex, parseUnits, size, zeroAddress, type Address, type Hex } from "viem";
-import { findBenefit, listBenefits, minAgeOf } from "./benefits";
+import { findBenefit, listBenefits, minAgeOf, parseLang } from "./benefits";
 import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } from "./claim-hash";
 import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
 import { agentRoutes, type Llm } from "./agent";
@@ -84,7 +84,7 @@ export function createApp(deps: Deps) {
   app.get("/health", (c) => c.json({ ok: true }));
 
   app.get("/benefit-office/v1/benefits", (c) =>
-    c.json({ data: { items: listBenefits(Number(c.env.CHAIN_ID)) } }),
+    c.json({ data: { items: listBenefits(Number(c.env.CHAIN_ID), parseLang(c.req.query("lang"))) } }),
   );
 
   app.post("/benefit-office/v1/claims", async (c) => {
