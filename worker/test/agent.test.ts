@@ -1,13 +1,23 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { AGENT_SYSTEM, AGENT_SYSTEM_EN, AGENT_TOOLS, AGENT_TOOLS_EN, type Llm } from "../src/agent";
+import {
+  AGENT_SYSTEM,
+  AGENT_SYSTEM_EN,
+  AGENT_TOOLS,
+  AGENT_TOOLS_EN,
+  ONCHAIN_STEPS,
+  ONCHAIN_STEPS_EN,
+  ONCHAIN_TOOLS,
+  ONCHAIN_TOOLS_EN,
+  type Llm,
+} from "../src/agent";
 import { createApp, type Deps } from "../src/app";
 import { mockPayout } from "../src/payout";
 
 const WALLET = "0x1111111111111111111111111111111111111111";
 
-function setup(llm: Llm | null) {
+function setup(llm: Llm | null, extra: Partial<Deps> = {}) {
   const deps: Deps = {
     verifier: { verifyClaimAge: async () => true },
     payout: mockPayout,
@@ -15,6 +25,7 @@ function setup(llm: Llm | null) {
     receiptWaitMs: 50,
     llm,
     agentModel: "test-model",
+    ...extra,
   };
   const app = createApp(deps);
   return async (body: unknown, headers: Record<string, string> = {}) => {
@@ -149,3 +160,51 @@ describe("POST /agent/v1/messages", () => {
     });
   });
 });
+
+describe("on-chain tools (#24)", () => {
+  async function send(extra: Record<string, unknown>, onchainTools: boolean) {
+    let seen: Anthropic.MessageCreateParamsNonStreaming | undefined;
+    const call = setup(
+      async (params) => {
+        seen = params;
+        return reply;
+      },
+      { agentOnchainTools: onchainTools },
+    );
+    const { status } = await call({ messages: [{ role: "user", content: "hi" }], wallet_address: WALLET, ...extra });
+    expect(status).toBe(200);
+    return seen;
+  }
+  const names = (params: Anthropic.MessageCreateParamsNonStreaming | undefined) =>
+    params?.tools?.map((t) => (t as Anthropic.Tool).name);
+  const texts = (params: Anthropic.MessageCreateParamsNonStreaming | undefined) =>
+    (params?.system as Anthropic.TextBlockParam[]).map((b) => b.text);
+
+  it("hides check_eligibility and verify_payment unless the flag is on", async () => {
+    for (const locale of ["ja", "en"]) {
+      const seen = await send({ locale }, false);
+      expect(names(seen)).not.toContain("check_eligibility");
+      expect(names(seen)).not.toContain("verify_payment");
+      expect(texts(seen).join("\n")).not.toContain("check_eligibility");
+    }
+  });
+
+  it.each([
+    ["ja", AGENT_TOOLS, ONCHAIN_TOOLS, ONCHAIN_STEPS],
+    ["en", AGENT_TOOLS_EN, ONCHAIN_TOOLS_EN, ONCHAIN_STEPS_EN],
+  ])("offers them with their instructions in %s when the flag is on", async (locale, base, onchain, steps) => {
+    const seen = await send({ locale }, true);
+    expect(seen?.tools).toEqual([...base, ...onchain]);
+    const system = seen?.system as Anthropic.TextBlockParam[];
+    expect(system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(system[1].text).toBe(steps);
+  });
+
+  it("describes the same schemas in both languages, and English without Japanese", () => {
+    expect(ONCHAIN_TOOLS_EN.map((t) => [t.name, t.input_schema.required])).toEqual(
+      ONCHAIN_TOOLS.map((t) => [t.name, t.input_schema.required]),
+    );
+    expect(ONCHAIN_STEPS_EN + ONCHAIN_TOOLS_EN.map((t) => t.description).join("")).not.toMatch(/[\u3040-\u30ff]/);
+  });
+});
+

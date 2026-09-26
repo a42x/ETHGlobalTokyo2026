@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createPublicClient, createWalletClient, defineChain, getAddress, http, isHex, size } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createApp, type Deps } from "./app";
+import { onchainReader } from "./onchain";
 import { benefitOfficePayout, unconfiguredPayout, type Payout } from "./payout";
 import { gateVerifier, type Verifier } from "./verify";
 
@@ -46,6 +47,11 @@ function deps(env: Cloudflare.Env): Deps {
     receiptWaitMs: 8000,
     llm: env.ANTHROPIC_API_KEY ? llmFor(env.ANTHROPIC_API_KEY) : null,
     agentModel: env.AGENT_MODEL,
+    onchain: env.BENEFIT_OFFICE_ADDRESS
+      ? onchainReader(client, chain.id, getAddress(env.BENEFIT_OFFICE_ADDRESS), getAddress(env.JPYC_ADDRESS))
+      : undefined,
+    // wrangler types the var as the literal in wrangler.toml; compare it as a string.
+    agentOnchainTools: (env.AGENT_ONCHAIN_TOOLS as string) === "true",
   };
 }
 

@@ -6,6 +6,7 @@ import { findBenefit, listBenefits, minAgeOf, parseLang } from "./benefits";
 import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } from "./claim-hash";
 import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
 import { agentRoutes, type Llm } from "./agent";
+import type { OnchainReader } from "./onchain";
 import { AlreadyPaidError, type Payout } from "./payout";
 import type { Verifier } from "./verify";
 
@@ -17,6 +18,10 @@ export type Deps = {
   /** null when ANTHROPIC_API_KEY is not configured; the agent route then answers 503. */
   llm: Llm | null;
   agentModel: string;
+  /** Chain reads for the office; unset when BENEFIT_OFFICE_ADDRESS is not configured. */
+  onchain?: OnchainReader;
+  /** Offer check_eligibility / verify_payment to the model (the mini app must implement them). */
+  agentOnchainTools?: boolean;
 };
 
 type Env = { Bindings: Cloudflare.Env };
@@ -102,6 +107,14 @@ export function createApp(deps: Deps) {
 
     const now = deps.now();
     const recipient = getAddress(body.wallet_address);
+    // Refuse before a card is read when the chain already records a payout.
+    // The contract enforces this anyway, so an RPC failure is not fatal here.
+    if (deps.onchain) {
+      const paid = await deps.onchain.isPaid(benefit.id, recipient).catch(() => false);
+      if (paid) {
+        return apiError(c, 409, "CLAIM_ALREADY_PAID", "This wallet has already received this benefit (recorded on chain)");
+      }
+    }
     const row: ClaimRow = {
       id: `clm_${crypto.randomUUID()}`,
       benefit_id: benefit.id,
@@ -131,6 +144,37 @@ export function createApp(deps: Deps) {
     const row = await getClaim(c.env.CLAIMS, c.req.param("id"));
     if (!row) return apiError(c, 404, "CLAIM_NOT_FOUND", "Claim not found");
     return c.json({ data: claimView(c.env, row, deps.now()) });
+  });
+
+  // Chain reads for the agent's check_eligibility / verify_payment tools (#24).
+  app.get("/benefit-office/v1/onchain/eligibility", async (c) => {
+    if (!deps.onchain) return apiError(c, 503, "CHAIN_UNAVAILABLE", "BENEFIT_OFFICE_ADDRESS is not set");
+    const benefitId = c.req.query("benefit_id");
+    const wallet = c.req.query("wallet_address");
+    if (!benefitId || !wallet || !isAddress(wallet)) {
+      return apiError(c, 400, "INVALID_REQUEST", "benefit_id and a valid wallet_address are required");
+    }
+    if (!findBenefit(benefitId, Number(c.env.CHAIN_ID))) return apiError(c, 404, "BENEFIT_NOT_FOUND", "Benefit not found");
+    try {
+      return c.json({ data: { benefit_id: benefitId, ...(await deps.onchain.eligibility(benefitId, getAddress(wallet))) } });
+    } catch {
+      return apiError(c, 502, "CHAIN_UNAVAILABLE", "Could not read the chain");
+    }
+  });
+
+  app.get("/benefit-office/v1/claims/:id/onchain", async (c) => {
+    if (!deps.onchain) return apiError(c, 503, "CHAIN_UNAVAILABLE", "BENEFIT_OFFICE_ADDRESS is not set");
+    const row = await getClaim(c.env.CLAIMS, c.req.param("id"));
+    if (!row) return apiError(c, 404, "CLAIM_NOT_FOUND", "Claim not found");
+    if (!row.tx_hash) {
+      return c.json({ data: { claim_id: row.id, tx_hash: null, confirmed: false, reason: "no payout transaction yet" } });
+    }
+    try {
+      const check = await deps.onchain.checkPayment(row.tx_hash, row.benefit_id, row.wallet_address);
+      return c.json({ data: { claim_id: row.id, ...check, explorer_url: explorerUrl(row.tx_hash) } });
+    } catch {
+      return apiError(c, 502, "CHAIN_UNAVAILABLE", "Could not read the chain");
+    }
   });
 
   app.post("/benefit-office/v1/claims/:id/proof", async (c) => {
@@ -229,7 +273,7 @@ export function createApp(deps: Deps) {
     });
   });
 
-  app.route("/", agentRoutes(deps.llm, deps.agentModel));
+  app.route("/", agentRoutes(deps.llm, deps.agentModel, { onchainTools: deps.agentOnchainTools }));
 
   app.notFound((c) => apiError(c, 404, "NOT_FOUND", "Not found"));
 

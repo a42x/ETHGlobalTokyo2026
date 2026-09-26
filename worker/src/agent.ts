@@ -154,9 +154,92 @@ export const AGENT_TOOLS_EN: Anthropic.Tool[] = [
   },
 ];
 
-const PROMPTS: Record<Lang, { system: string; tools: Anthropic.Tool[]; wallet: (address: string) => string }> = {
-  ja: { system: AGENT_SYSTEM, tools: AGENT_TOOLS, wallet: (a) => `ユーザーのウォレットアドレス: ${a}` },
-  en: { system: AGENT_SYSTEM_EN, tools: AGENT_TOOLS_EN, wallet: (a) => `User's wallet address: ${a}` },
+/**
+ * Tools that let the agent read Polygon Amoy itself (#24): whether a wallet can
+ * still receive a benefit, and whether a payout actually reached the wallet.
+ * Offered only when the mini app implements them (AGENT_ONCHAIN_TOOLS), since
+ * an unknown tool call would leave the agent stuck.
+ */
+export const ONCHAIN_STEPS = `チェーンの確認 (check_eligibility と verify_payment が使えるとき):
+- create_claim の前に check_eligibility を呼び、チェーン上の状態を確かめる。already_received が true なら、カードを読む前に「このウォレットはこの給付金を受け取り済み」と伝えて止める。funded が false なら「窓口の残高が足りない」と伝えて止める。
+- submit_proof の結果が status "paid" になったら verify_payment を呼ぶ。confirmed が true のときだけ、「チェーン上で、窓口からあなたのウォレットに amount JPYC が送られたことを確かめました」と block_number とともに伝える。confirmed が false なら、確認できなかったと正直に伝える。`;
+
+export const ONCHAIN_STEPS_EN = `On-chain checks (when check_eligibility and verify_payment are available):
+- Before create_claim, call check_eligibility to read the state on chain. If already_received is true, stop before any card is read and say this wallet has already received this benefit. If funded is false, stop and say the office does not have enough funds.
+- When submit_proof returns status "paid", call verify_payment. Only if confirmed is true, say you confirmed on chain that the office sent amount JPYC to the user's wallet, with the block_number. If confirmed is false, say plainly that it could not be confirmed.`;
+
+export const ONCHAIN_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "check_eligibility",
+    description:
+      "Polygon Amoy のチェーンを直接読み、この給付金をこのウォレットが今受け取れるかを確かめる。結果に amount (チェーンに登録された給付額), office_balance (窓口の JPYC 残高), already_received (このウォレットが受け取り済みか), funded, claimable が入る。",
+    input_schema: {
+      type: "object",
+      properties: { benefit_id: { type: "string", description: "search_benefits で得た給付金の id" } },
+      required: ["benefit_id"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "verify_payment",
+    description:
+      "給付の tx の受領書と JPYC の Transfer のログをチェーンから直接読み、窓口からこのウォレットに給付額が届いたかを確かめる。結果に confirmed, block_number, transfer (from, to, amount) が入る。",
+    input_schema: {
+      type: "object",
+      properties: { claim_id: { type: "string", description: "create_claim で得た申請の id" } },
+      required: ["claim_id"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+];
+
+export const ONCHAIN_TOOLS_EN: Anthropic.Tool[] = [
+  {
+    ...ONCHAIN_TOOLS[0],
+    description:
+      "Read Polygon Amoy directly to check whether this wallet can receive this benefit now. The result has amount (the amount registered on chain), office_balance (the office's JPYC balance), already_received (whether this wallet has already received it), funded and claimable.",
+    input_schema: {
+      type: "object",
+      properties: { benefit_id: { type: "string", description: "The benefit id from search_benefits" } },
+      required: ["benefit_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    ...ONCHAIN_TOOLS[1],
+    description:
+      "Read the payout transaction's receipt and its JPYC Transfer log directly from the chain, and check that the benefit amount reached this wallet from the office. The result has confirmed, block_number and transfer (from, to, amount).",
+    input_schema: {
+      type: "object",
+      properties: { claim_id: { type: "string", description: "The claim id from create_claim" } },
+      required: ["claim_id"],
+      additionalProperties: false,
+    },
+  },
+];
+
+type Prompt = {
+  system: string;
+  tools: Anthropic.Tool[];
+  wallet: (address: string) => string;
+  onchain: { steps: string; tools: Anthropic.Tool[] };
+};
+
+const PROMPTS: Record<Lang, Prompt> = {
+  ja: {
+    system: AGENT_SYSTEM,
+    tools: AGENT_TOOLS,
+    wallet: (a) => `ユーザーのウォレットアドレス: ${a}`,
+    onchain: { steps: ONCHAIN_STEPS, tools: ONCHAIN_TOOLS },
+  },
+  en: {
+    system: AGENT_SYSTEM_EN,
+    tools: AGENT_TOOLS_EN,
+    wallet: (a) => `User's wallet address: ${a}`,
+    onchain: { steps: ONCHAIN_STEPS_EN, tools: ONCHAIN_TOOLS_EN },
+  },
 };
 
 function apiError(c: Context, status: 400 | 413 | 502 | 503, code: string, message: string) {
@@ -186,7 +269,7 @@ async function createWithRetry(llm: Llm, params: Anthropic.MessageCreateParamsNo
   return message;
 }
 
-export function agentRoutes(llm: Llm | null, model: string) {
+export function agentRoutes(llm: Llm | null, model: string, { onchainTools = false }: { onchainTools?: boolean } = {}) {
   const app = new Hono<{ Bindings: Cloudflare.Env }>();
 
   app.post("/agent/v1/messages", async (c) => {
@@ -210,9 +293,10 @@ export function agentRoutes(llm: Llm | null, model: string) {
         output_config: { effort: "medium" },
         system: [
           { type: "text", text: prompt.system, cache_control: { type: "ephemeral" } },
+          ...(onchainTools ? [{ type: "text" as const, text: prompt.onchain.steps }] : []),
           { type: "text", text: prompt.wallet(body.wallet_address) },
         ],
-        tools: prompt.tools,
+        tools: onchainTools ? [...prompt.tools, ...prompt.onchain.tools] : prompt.tools,
         messages: body.messages,
       });
     } catch (e) {
