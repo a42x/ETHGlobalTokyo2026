@@ -9,16 +9,16 @@
 
 | コントラクト | アドレス |
 | --- | --- |
-| `BenefitAgeGate` (J-LIS) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
-| `BenefitAgeGateTestRoot` (合成データのルート) | [`0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8`](https://amoy.polygonscan.com/address/0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8) |
-| `BenefitOffice` (J-LIS の gate を使う) | [`0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104) |
-| `BenefitAgeGateJpkiTest` (テスト用 J-LIS、試験カード) | [`0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14`](https://amoy.polygonscan.com/address/0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14) |
-| `BenefitOffice` (試験カード用の gate を使う) | [`0x7fA6E5a6DB7A45d2514Beb7F30c5F542A0EBD09f`](https://amoy.polygonscan.com/address/0x7fA6E5a6DB7A45d2514Beb7F30c5F542A0EBD09f) |
+| `BenefitAgeGate` (J-LIS) | [`0x44a0c9187cacfd2211d6e36e662b81e21950fdee`](https://amoy.polygonscan.com/address/0x44a0c9187cacfd2211d6e36e662b81e21950fdee) |
+| `BenefitAgeGateTestRoot` (合成データのルート) | [`0x5cc9a5b5779e81fedb1bb8ecceb94aa553f254a6`](https://amoy.polygonscan.com/address/0x5cc9a5b5779e81fedb1bb8ecceb94aa553f254a6) |
+| `BenefitAgeGateJpkiTest` (テスト用 J-LIS、試験カード) | [`0x70bc454c84536f05934051ba7b7bb91e3c368588`](https://amoy.polygonscan.com/address/0x70bc454c84536f05934051ba7b7bb91e3c368588) |
+| `BenefitOffice` (J-LIS の gate を使う) | [`0x946105a8d563c70be8d6b8682047e9064878c885`](https://amoy.polygonscan.com/address/0x946105a8d563c70be8d6b8682047e9064878c885) |
+| `BenefitOffice` (試験カード用の gate を使う。Worker はこちら) | [`0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2`](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) |
 
-gate はどちらも Verifier `0xb89d8e0c4a345ead852ab919548734c4f506596c` を参照します。
-2 つの `BenefitOffice` には、どちらも `youth-support-2026` (500 JPYC) を登録し、5,000 JPYC ずつ入れています。operator は、Worker の EOA が決まるまでデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+gate はどれも Verifier v2 `0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078` を参照します。v2 の回路は、本番 (1.2.392.200149.8.5.1.1.20) と試験 (1.2.392.200149.8.5.1.0.20) の署名用ポリシーの両方を受け付けます。本番か試験かは、gate が固定するルート鍵で分かれます。
+2 つの `BenefitOffice` には、どちらも `youth-support-2026` (500 JPYC) を登録し、J-LIS 用に 2,500 JPYC、試験カード用に 5,000 JPYC 入れています。operator は Worker の EOA `0x71B5…17B3` (`claim()` しか呼べない)、owner はデプロイしたアドレスです。記録は [deployments/amoy.json](deployments/amoy.json) にあります。
 
-最初にデプロイした `BenefitOffice` (`0x91F11e24…2Bd0` と `0x498b8341…91dC`) には `resetPaid` がないので、JPYC を引き出して使うのをやめました。
+前の Verifier (`0xb89d8e0c…596c`、本番のポリシーだけ) を使っていた gate と office、`resetPaid` のない最初の office は、JPYC を引き出して使うのをやめました (`deployments/amoy.json` の `deprecated`)。
 
 ## gate
 
@@ -57,7 +57,7 @@ gate は 2 種類あります。
 owner が同じ受取人にもう一度給付できるようになるので、本番の給付窓口には入れてはいけません。
 
 ```sh
-cast send 0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104 'resetPaid(bytes32,address)' \
+cast send 0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2 'resetPaid(bytes32,address)' \
   "$(cast keccak youth-support-2026)" 0x… --rpc-url https://polygon-amoy-bor-rpc.publicnode.com \
   --private-key "$AMOY_DEPLOYER_PRIVATE_KEY" --priority-gas-price 30gwei
 ```

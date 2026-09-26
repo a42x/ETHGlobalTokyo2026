@@ -1,12 +1,12 @@
 {
   "chainId": 80002,
-  "verifier": "0xb89d8e0c4a345ead852ab919548734c4f506596c",
-  "deployer": "0x2810f7f5bbDBf95ABD65A0c62406990392d24C66",
-  "transaction": "0x4ddd615f1ebb9684785ec41feba9af1ae8d2e1ff391b0c1f23838599afe77fce",
-  "block": "48518348",
-  "gasUsed": "1313927",
-  "runtimeCodeHash": "0x1c2885208409fc9edf78efd14a032ec311bc414c83d4cb66329a702bc647d650",
-  "verifierSourceSHA256": "001ede90029f4186ebbe733d4ef245b8f6167680b87af08002ef176839a85aff",
+  "verifier": "0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078",
+  "deployer": "0x9aE507979F85d5B666313eA323f357209c871395",
+  "transaction": "0x1464b395a2a770ab31556264bb6fd75687af7722455c2f6ab3885c39e1501849",
+  "block": "48579415",
+  "gasUsed": "1314611",
+  "runtimeCodeHash": "0x19c4a98e5b424932757581052b8a433f61bffd0ca477610713f2075595187599",
+  "verifierSourceSHA256": "ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe",
   "syntheticInputsSHA256": "945d498dde70493bb47af5503892fff401b4c32431262a08d1af2e5e9082d767",
   "compiler": "0.8.30+commit.73712a01.Emscripten.clang",
   "settings": {
@@ -18,5 +18,5 @@
     "viaIR": true
   },
   "setup": "single-party test setup, not a ceremony",
-  "explorer": "https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c"
+  "explorer": "https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078"
 }

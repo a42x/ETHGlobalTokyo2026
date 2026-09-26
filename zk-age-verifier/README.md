@@ -9,9 +9,14 @@ ETHGlobal Tokyo 2026 の給付金デモ用で、テストネット専用です�
 
 | chain | Verifier |
 | --- | --- |
-| Polygon Amoy (80002) | [`0xb89d8e0c4a345ead852ab919548734c4f506596c`](https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c) |
+| Polygon Amoy (80002) | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
 
 デプロイの記録は [deployments/amoy.json](deployments/amoy.json) にあります。
+
+2026-09-26 に、試験カード (JPKI-TEST) も証明できる回路に作り直しました (v2)。
+- 試験カードの署名用証明書は、証明書ポリシーの OID だけが本番と違います (本番 1.2.392.200149.8.5.1.**1**.20、試験 1.2.392.200149.8.5.1.**0**.20)。v2 の回路はどちらも受け付けます。
+- 本番の証明か試験の証明かは、今までどおり gate が固定するルート鍵で分かれます (本番の J-LIS の gate は、試験のルートを通しません)。
+- 前の Verifier `0xb89d8e0c…596c` の記録は [deployments/amoy-v1.json](deployments/amoy-v1.json) にあります。
 
 ## 使い方
 
@@ -84,7 +89,8 @@ Verifier は証明と公開入力の整合だけを確かめます。
 - `contracts/Verifier.sol` は [worldfnd/provekit](https://github.com/worldfnd/provekit) の revision `dd237e542403302186c8de4bd10df6e5c9b6725a` の `export-solidity` で出力したもので、MIT ライセンスです ([PROVEKIT-LICENSE.md](PROVEKIT-LICENSE.md))。
   - 出力時には ZeroKeyMate の隠蔽用パッチ `provekit-groth16-hiding.patch` (SHA-256 `6ea38e8eec3f7631955794d164fcf97052c14652e641119735d066dda8b92db5`) を当てています。
   - メモリ境界の修正 (`scripts/patch-age-verifier.py`) も当てています。
-  - 元にした検証鍵は `age.pkv` (SHA-256 `5f7e9080e2e3a056efb531132e2277c9329554a74fae1c59883bba5dbda4dad2`) で、ZeroKeyMate の `config/age-runtime-pins.json` に固定されているものです。
-- `contracts/Verifier.sol` の SHA-256 は `001ede90029f4186ebbe733d4ef245b8f6167680b87af08002ef176839a85aff` です。
+  - 回路は ZeroKeyMate のブランチ `eth/jpki-test-policy` (commit `d24fafc`) で、`certificate.nr` のポリシーの確認だけを変えています。main の固定 (`config/age-runtime-pins.json`) は変えていません。
+  - 検証鍵は `age.pkv` (SHA-256 `07e6a671d3b5dfce8b28a3e1b1c3dbd465310cb3a7996ef6f97cf8f8b1c62cd2`)、証明鍵は `age.pkp` (SHA-256 `71294569bfc1f0492128fa320dcd7bb97a292bd8e81940ea5de6bb16b99b3931`) です。鍵はリポジトリに入れていません。
+- `contracts/Verifier.sol` の SHA-256 は `ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe` です。
   `scripts/lib.mjs` がコンパイル前にこの値を確認します。
 - コンパイラは solc 0.8.30 で、optimizer 200、viaIR、EVM バージョン cancun です。
