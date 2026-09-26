@@ -2,7 +2,7 @@
 
 This covers the zero-knowledge and on-chain part of the demo. The agent mini app and its conversation are described separately.
 
-Status as of 2026-09-26 09:30 JST. Update the "What we ran" section before submitting if the agent path has been run end to end.
+Status as of 2026-09-26 12:00 JST.
 
 ## Summary
 
@@ -29,7 +29,13 @@ We also replayed a recorded proof on an Amoy fork, with the clock set back to it
 | The gate for test cards (JPKI-TEST roots) | false |
 | After `expiresAt` | false |
 
-These runs were driven by a local test page and a local server that played the benefit office. The same flow through the agent mini app and the Cloudflare Worker was tested on an Amoy fork only: the gate was replaced with a stub, and the fork used a test operator key.
+The full flow also ran with the same real card through the agent mini app and the Cloudflare Worker:
+
+- The user asked the agent in the MynaWallet mini app to find benefits they could receive now.
+- The agent called `search_benefits` and `create_claim`, and the phone generated the proof.
+- The agent called `submit_proof`. The Worker checked the proof with the gate and sent `claim()` from its operator key, which pays 500 JPYC in the same transaction.
+
+The earlier runs used a local test page and a local server in place of the agent and the Worker.
 
 ## How the proof works
 
