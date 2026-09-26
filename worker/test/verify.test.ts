@@ -5,8 +5,8 @@ import proofHex from "./fixtures/proof.hex?raw";
 import secondProofHex from "./fixtures/second-proof.hex?raw";
 import inputsTxt from "./fixtures/inputs.txt?raw";
 
-// Real deployment from teammate PR #3 (origin/feat/zk-age-verifier-amoy), Polygon Amoy.
-const VERIFIER_ADDRESS = "0xb89d8e0c4a345ead852ab919548734c4f506596c";
+// Real deployment on Polygon Amoy (zk-age-verifier/deployments/amoy.json).
+const VERIFIER_ADDRESS = "0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078";
 const AMOY_RPC = "https://polygon-amoy-bor-rpc.publicnode.com";
 
 const proof = proofHex.trim() as `0x${string}`;
@@ -60,8 +60,8 @@ describe("groth16Verifier against the real Amoy deployment", () => {
 // Real gates on Amoy (contracts/deployments/amoy.json). The fixture is synthetic:
 // its root is the one pinned in BenefitAgeGateTestRoot, and it is valid from
 // referenceTime 1800000000 to expiresAt 1800000900, so the tests move block time there.
-const TEST_ROOT_GATE = "0x1eFB38FD54146806129A1090D1d4F7d2668BBfD8";
-const JLIS_GATE = "0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803";
+const TEST_ROOT_GATE = "0x5cc9a5b5779e81fedb1bb8ecceb94aa553f254a6";
+const JLIS_GATE = "0x44a0c9187cacfd2211d6e36e662b81e21950fdee";
 const IN_WINDOW = { time: 1_800_000_100n };
 
 const join = (hi: bigint, lo: bigint) => `0x${((hi << 128n) | lo).toString(16).padStart(64, "0")}` as `0x${string}`;

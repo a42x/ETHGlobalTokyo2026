@@ -1,0 +1,22 @@
+{
+  "chainId": 80002,
+  "verifier": "0xb89d8e0c4a345ead852ab919548734c4f506596c",
+  "deployer": "0x2810f7f5bbDBf95ABD65A0c62406990392d24C66",
+  "transaction": "0x4ddd615f1ebb9684785ec41feba9af1ae8d2e1ff391b0c1f23838599afe77fce",
+  "block": "48518348",
+  "gasUsed": "1313927",
+  "runtimeCodeHash": "0x1c2885208409fc9edf78efd14a032ec311bc414c83d4cb66329a702bc647d650",
+  "verifierSourceSHA256": "001ede90029f4186ebbe733d4ef245b8f6167680b87af08002ef176839a85aff",
+  "syntheticInputsSHA256": "945d498dde70493bb47af5503892fff401b4c32431262a08d1af2e5e9082d767",
+  "compiler": "0.8.30+commit.73712a01.Emscripten.clang",
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "evmVersion": "cancun",
+    "viaIR": true
+  },
+  "setup": "single-party test setup, not a ceremony",
+  "explorer": "https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c"
+}
