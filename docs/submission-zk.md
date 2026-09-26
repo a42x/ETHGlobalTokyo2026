@@ -109,7 +109,7 @@ These are single observations, not benchmarks.
 
 ## Attribution
 
-- **ZeroKeyMate** ([susumutomita/ZeroKeyMate](https://github.com/susumutomita/ZeroKeyMate), Apache-2.0) provided three parts:
+- **ZeroKeyMate** ([susumutomita/ZeroKeyMate](https://github.com/susumutomita/ZeroKeyMate), Apache-2.0) provided three parts. The circuit used here also accepts the JPKI-TEST signing policy; that change is commit [`d24fafc`](https://github.com/susumutomita/ZeroKeyMate/commit/d24fafc97ac11c50e46ff240fb3d08ea82143a73) on the branch `eth/jpki-test-policy`.
   - the `jpki_age` circuit
   - the age-gate design, adapted here as `BenefitAgeGate`
   - the native prover runtime, from commit `0ea7aca`, `native/age-proof`
