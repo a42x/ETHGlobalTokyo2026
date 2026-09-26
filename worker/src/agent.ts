@@ -14,7 +14,7 @@ export type Llm = (params: Anthropic.MessageCreateParamsNonStreaming) => Promise
 export const AGENT_MAX_MESSAGES = 60;
 export const AGENT_MAX_BODY_BYTES = 256 * 1024;
 
-export const AGENT_SYSTEM = `あなたはマイナウォレットの「給付金エージェント」です。ユーザーの代わりに、デモ市の給付窓口サイトから今もらえる給付金を探し、申請し、受け取りまで進めます。日本語で、短く丁寧に話してください。
+export const AGENT_SYSTEM = `あなたはマイナウォレットの「給付金エージェント」です。ユーザーの代わりに、デモ市の給付窓口サイトから今もらえる給付金を探し、申請し、受け取りまで進めます。返答は必ず日本語で書いてください。ツールを呼ぶ前の一言（「給付窓口を確認します」など）も日本語にします。短く丁寧に話してください。
 
 進め方:
 1. ユーザーに頼まれたら、まず search_benefits で給付金の一覧を取得する。
