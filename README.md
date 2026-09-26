@@ -3,7 +3,9 @@
 **An AI agent in MynaWallet that finds government benefits you can receive and claims them for you, proving with your My Number Card that you are 20 or older without revealing your birth date, and receiving the payout in JPYC after the proof is verified on-chain.**
 
 - **Prize:** Curvegrid, Best AI Agent Project. See [how the project meets it](#prize-curvegrid-best-ai-agent-project).
-- **Live:** the contracts are on Polygon Amoy (chain id 80002), and the Worker is at <https://benefit-office.ethglobal2026.workers.dev>.
+- **Live:**
+  - The contracts are on Polygon Amoy (chain id 80002). For example, the [benefit office the demo uses](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) shows each payout.
+  - The Worker is deployed. For example, [the benefits it offers](https://benefit-office.ethglobal2026.workers.dev/benefit-office/v1/benefits?lang=en) returns JSON. The Worker's root URL has no page and answers 404.
 - **An agent-driven payout on Amoy:** [`0x8287b5fd…8d33`](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33). The agent's `submit_proof` led to one `claim()` that verified the proof and paid 500 JPYC.
 
 This repository holds the hackathon code for ETHGlobal Tokyo 2026: the benefit office contracts, the Groth16 verifier, and the Cloudflare Worker that serves the agent and the benefit office API.
@@ -215,7 +217,7 @@ Example payouts with a test card and the current verifier, both to the test-card
 
 The runs with a real card used the first verifier, before it accepted test cards. Their claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104). All deployments, including the retired ones, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
 
-The Worker is deployed at <https://benefit-office.ethglobal2026.workers.dev> (for example, `GET /benefit-office/v1/benefits`).
+The Worker is deployed at `https://benefit-office.ethglobal2026.workers.dev`. It is an API, and its root URL has no page. To see it answer, open [`GET /benefit-office/v1/benefits?lang=en`](https://benefit-office.ethglobal2026.workers.dev/benefit-office/v1/benefits?lang=en) or [`GET /health`](https://benefit-office.ethglobal2026.workers.dev/health).
 
 ## Setup and testing
 
