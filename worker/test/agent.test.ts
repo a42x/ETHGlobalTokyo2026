@@ -146,7 +146,7 @@ describe("POST /agent/v1/messages", () => {
 
     it("explains every age proof error, including the -32045 reasons, in both prompts", () => {
       for (const prompt of [AGENT_SYSTEM, AGENT_SYSTEM_EN]) {
-        for (const code of ["4001", "-32041", "-32042", "-32044", "-32045", "CLAIM_ALREADY_PAID", "card_owner_mismatch", "certificate_revoked"]) {
+        for (const code of ["4001", "-32041", "-32042", "-32044", "-32045", "CLAIM_ALREADY_PAID", "card_owner_mismatch", "certificate_revoked", "OPERATOR_FUNDS_LOW", "OFFICE_FUNDS_LOW", "PAYOUT_MISCONFIGURED", "PAYOUT_FAILED"]) {
           expect(prompt).toContain(code);
         }
       }

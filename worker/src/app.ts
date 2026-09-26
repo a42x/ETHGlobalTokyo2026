@@ -7,7 +7,7 @@ import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } fro
 import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
 import { agentRoutes, type Llm } from "./agent";
 import type { OnchainReader } from "./onchain";
-import { AlreadyPaidError, type Payout } from "./payout";
+import { AlreadyPaidError, PayoutError, type Payout } from "./payout";
 import type { Verifier } from "./verify";
 
 export type Deps = {
@@ -237,7 +237,11 @@ export function createApp(deps: Deps) {
       if (err instanceof AlreadyPaidError) {
         return apiError(c, 409, "CLAIM_ALREADY_PAID", "This wallet has already received this benefit");
       }
-      return apiError(c, 502, "PAYOUT_FAILED", "Failed to send the payout transaction");
+      const failure =
+        err instanceof PayoutError ? err : new PayoutError("PAYOUT_FAILED", `The payout transaction could not be sent: ${String(err).slice(0, 200)}`);
+      // Visible in `wrangler tail`; never includes the proof or any key.
+      console.error("payout failed", JSON.stringify({ claim: id, code: failure.code, reason: failure.message }));
+      return apiError(c, failure.code === "PAYOUT_FAILED" ? 502 : 503, failure.code, failure.message);
     }
     await recordPendingTxHash(c.env.CLAIMS, id, txHash, deps.now());
 
@@ -258,7 +262,8 @@ export function createApp(deps: Deps) {
       return c.json({ data: { id, status: "verifying" } }, 202);
     }
     if (result === "reverted") {
-      return apiError(c, 502, "PAYOUT_FAILED", "Payout transaction reverted");
+      console.error("payout failed", JSON.stringify({ claim: id, code: "PAYOUT_FAILED", reason: "reverted", tx: txHash }));
+      return apiError(c, 502, "PAYOUT_FAILED", `The payout transaction reverted on chain (${txHash})`);
     }
     const benefit = findBenefit(row.benefit_id, Number(c.env.CHAIN_ID))!;
     return c.json({

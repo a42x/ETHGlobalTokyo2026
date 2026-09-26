@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { createApp, type Deps } from "../src/app";
 import { publicInputs } from "../src/claim-hash";
-import { AlreadyPaidError, mockPayout } from "../src/payout";
+import { AlreadyPaidError, mockPayout, PayoutError, unconfiguredPayout } from "../src/payout";
 import type { OnchainReader } from "../src/onchain";
 import type { Verifier } from "../src/verify";
 
@@ -187,6 +187,39 @@ describe("claims", () => {
     alreadyPaid = false;
     const retried = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
     expect(retried.status).toBe(200);
+  });
+
+  it.each([
+    ["OPERATOR_FUNDS_LOW", 503],
+    ["OFFICE_FUNDS_LOW", 503],
+    ["PAYOUT_MISCONFIGURED", 503],
+    ["PAYOUT_FAILED", 502],
+  ] as const)("returns %s with its reason when the payout cannot be sent", async (code, status) => {
+    const { call } = setup({
+      payout: { ...mockPayout, send: () => Promise.reject(new PayoutError(code, `reason for ${code}`)) },
+    });
+    const claim = await createClaim(call);
+    const res = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(res.status).toBe(status);
+    expect(res.json.error).toEqual({ code, message: `reason for ${code}` });
+    expect((await call("GET", `/benefit-office/v1/claims/${claim.id}`)).json.data.status).toBe("failed");
+  });
+
+  it("names an unexpected send failure instead of hiding it", async () => {
+    const { call } = setup({ payout: { ...mockPayout, send: () => Promise.reject(new Error("socket hang up")) } });
+    const claim = await createClaim(call);
+    const res = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(res.status).toBe(502);
+    expect(res.json.error.code).toBe("PAYOUT_FAILED");
+    expect(res.json.error.message).toContain("socket hang up");
+  });
+
+  it("reports a Worker without an operator key as misconfigured", async () => {
+    const { call } = setup({ payout: unconfiguredPayout("OPERATOR_PRIVATE_KEY is not set") });
+    const claim = await createClaim(call);
+    const res = await call("POST", `/benefit-office/v1/claims/${claim.id}/proof`, proofFor(claim));
+    expect(res.status).toBe(503);
+    expect(res.json.error.code).toBe("PAYOUT_MISCONFIGURED");
   });
 
   it.each([
