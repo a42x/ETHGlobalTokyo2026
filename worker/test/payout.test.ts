@@ -12,7 +12,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 import { benefitKey } from "../src/claim-hash";
-import { AlreadyPaidError, benefitOfficePayout, type PayoutRequest } from "../src/payout";
+import { AlreadyPaidError, benefitOfficePayout, PayoutError, unconfiguredPayout, type PayoutRequest } from "../src/payout";
 
 // Anvil's public test account #0. It holds nothing on Amoy.
 const TEST_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -30,8 +30,9 @@ const req: PayoutRequest = {
   inputs: [1n, 2n, 3n, 4n, 5n, 6n, 1_790_000_000n, 1_790_000_900n],
 };
 
-// A fake Amoy node: eth_call either succeeds or reverts with `revertData`.
-function fakeNode(revertData?: Hex) {
+// A fake Amoy node: eth_call either succeeds or reverts with `revertData`;
+// eth_sendRawTransaction fails with `sendError` when given.
+function fakeNode(revertData?: Hex, sendError?: string) {
   const methods: string[] = [];
   const sent: Hex[] = [];
   const transport = custom({
@@ -50,6 +51,7 @@ function fakeNode(revertData?: Hex) {
         case "eth_maxPriorityFeePerGas":
           return "0x6fc23ac00";
         case "eth_sendRawTransaction":
+          if (sendError) throw Object.assign(new Error(sendError), { code: -32000 });
           sent.push(params[0]);
           return keccak256(params[0]);
         default:
@@ -100,12 +102,41 @@ describe("benefitOfficePayout", () => {
     expect(sent).toHaveLength(0);
   });
 
-  it("rethrows other reverts without sending", async () => {
-    // ProofRejected()
-    const { payout, sent } = fakeNode("0xc3b0d8cd");
+  it.each([
+    ["TransferFailed()", "0x90b8ec18", "OFFICE_FUNDS_LOW"],
+    ["NotOperator()", "0x7c214f04", "PAYOUT_MISCONFIGURED"],
+    ["UnknownBenefit()", "0x22491682", "PAYOUT_MISCONFIGURED"],
+    ["ProofRejected()", "0xc3b0d8cd", "PAYOUT_FAILED"],
+  ])("names a %s revert and sends nothing", async (_name, data, code) => {
+    const { payout, sent } = fakeNode(data as Hex);
     const err = await payout.send(req).catch((e) => e);
-    expect(err).not.toBeInstanceOf(AlreadyPaidError);
-    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(PayoutError);
+    expect(err.code).toBe(code);
     expect(sent).toHaveLength(0);
+  });
+
+  it("reports an operator that cannot pay the network fee", async () => {
+    const { payout } = fakeNode(
+      undefined,
+      "insufficient funds for gas * price + value: balance 29505419915653458, tx cost 30000000000000000",
+    );
+    const err = await payout.send(req).catch((e) => e);
+    expect(err).toBeInstanceOf(PayoutError);
+    expect(err.code).toBe("OPERATOR_FUNDS_LOW");
+    expect(err.message).toContain("POL");
+  });
+
+  it("wraps other send failures with a short reason", async () => {
+    const { payout } = fakeNode(undefined, "nonce too low");
+    const err = await payout.send(req).catch((e) => e);
+    expect(err).toBeInstanceOf(PayoutError);
+    expect(err.code).toBe("PAYOUT_FAILED");
+    expect(err.message).toMatch(/nonce/i);
+  });
+
+  it("reports a Worker without an office or operator key as misconfigured", async () => {
+    const err = await unconfiguredPayout("OPERATOR_PRIVATE_KEY is not set").send(req).catch((e) => e);
+    expect(err).toBeInstanceOf(PayoutError);
+    expect(err.code).toBe("PAYOUT_MISCONFIGURED");
   });
 });
