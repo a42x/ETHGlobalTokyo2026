@@ -2,6 +2,8 @@
 
 **MynaAgent is an AI agent that runs as a mini app inside MynaWallet. Its first job is claiming public benefits for you. It proves with your My Number Card that you qualify, without revealing your birth date, and the benefit arrives in JPYC after a contract verifies the proof on-chain.**
 
+![MynaAgent, an AI agent that runs as a mini app inside MynaWallet and finds public benefits you are eligible for](docs/images/cover.jpg)
+
 - **ETHGlobal page:** <https://ethglobal.com/showcase/mynaagent-hqgrm>
 - **Live:**
   - The contracts are on Polygon Amoy (chain id 80002). For example, the [benefit office the demo uses](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) shows each payout.
@@ -25,6 +27,15 @@ Japan's government plans to let people use AI agents with the My Number Card, co
 Next on our roadmap is proving residency the same way, because city benefits are for the city's residents. After that we plan to add other procedures that need your national ID.
 
 ## What it does in the demo
+
+These frames come from our demo video.
+
+| | |
+| --- | --- |
+| ![The agent chat in MynaWallet, with every tool call shown as a card](docs/images/demo-1-tool-calls.jpg) | ![The user holds the My Number Card to the iPhone after entering the signing PIN](docs/images/demo-2-tap-the-card.jpg) |
+| The agent works through visible tool calls. The proof stays in the mini app. | The wallet reads the card over NFC, and the phone makes the proof. |
+| ![The agent reports that 500 JPYC arrived in the wallet](docs/images/demo-3-paid.jpg) | ![The block explorer shows the JPYC transfer from the benefit office to the wallet](docs/images/demo-4-on-chain.jpg) |
+| The contract verifies the proof and pays in the same transaction. | Anyone can check the payout on the block explorer. |
 
 1. In the MynaWallet app, the user opens the agent mini app and asks: "Find benefits I can receive now."
 2. The agent (Claude, through tools) searches a demo benefit office and finds a benefit. The demo assumes a benefit for people aged 20 or older, so the claim needs a proof of age.
