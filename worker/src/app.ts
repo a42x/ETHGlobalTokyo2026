@@ -5,7 +5,7 @@ import { bytesToHex, getAddress, isAddress, isHex, parseUnits, size, zeroAddress
 import { findBenefit, listBenefits, minAgeOf } from "./benefits";
 import { GATE_ORDER_DURATION, GATE_MIN_AGE, computeClaimHash, publicInputs } from "./claim-hash";
 import { getClaim, insertClaim, recordPendingTxHash, compareAndSetStatus, type ClaimRow } from "./claims";
-import type { Payout } from "./payout";
+import { AlreadyPaidError, type Payout } from "./payout";
 import type { Verifier } from "./verify";
 
 export type Deps = {
@@ -184,8 +184,11 @@ export function createApp(deps: Deps) {
         proof,
         inputs,
       });
-    } catch {
+    } catch (err) {
       await compareAndSetStatus(c.env.CLAIMS, id, ["verifying"], "failed", deps.now());
+      if (err instanceof AlreadyPaidError) {
+        return apiError(c, 409, "CLAIM_ALREADY_PAID", "This wallet has already received this benefit");
+      }
       return apiError(c, 502, "PAYOUT_FAILED", "Failed to send the payout transaction");
     }
     await recordPendingTxHash(c.env.CLAIMS, id, txHash, deps.now());
