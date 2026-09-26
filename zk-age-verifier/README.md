@@ -89,7 +89,7 @@ Verifier は証明と公開入力の整合だけを確かめます。
 - `contracts/Verifier.sol` は [worldfnd/provekit](https://github.com/worldfnd/provekit) の revision `dd237e542403302186c8de4bd10df6e5c9b6725a` の `export-solidity` で出力したもので、MIT ライセンスです ([PROVEKIT-LICENSE.md](PROVEKIT-LICENSE.md))。
   - 出力時には ZeroKeyMate の隠蔽用パッチ `provekit-groth16-hiding.patch` (SHA-256 `6ea38e8eec3f7631955794d164fcf97052c14652e641119735d066dda8b92db5`) を当てています。
   - メモリ境界の修正 (`scripts/patch-age-verifier.py`) も当てています。
-  - 回路は ZeroKeyMate のブランチ `eth/jpki-test-policy` (commit `d24fafc`) で、`certificate.nr` のポリシーの確認だけを変えています。main の固定 (`config/age-runtime-pins.json`) は変えていません。
+  - 回路は ZeroKeyMate のブランチ [`eth/jpki-test-policy`](https://github.com/susumutomita/ZeroKeyMate/tree/eth/jpki-test-policy) (commit [`d24fafc`](https://github.com/susumutomita/ZeroKeyMate/commit/d24fafc97ac11c50e46ff240fb3d08ea82143a73)) で、`certificate.nr` のポリシーの確認だけを変えています。main の固定 (`config/age-runtime-pins.json`) は変えていません。
   - 検証鍵は `age.pkv` (SHA-256 `07e6a671d3b5dfce8b28a3e1b1c3dbd465310cb3a7996ef6f97cf8f8b1c62cd2`)、証明鍵は `age.pkp` (SHA-256 `71294569bfc1f0492128fa320dcd7bb97a292bd8e81940ea5de6bb16b99b3931`) です。鍵はリポジトリに入れていません。
 - `contracts/Verifier.sol` の SHA-256 は `ef5e19327f05f19a839a2f2f1e5676a3d275051b233e856f35cb3770ededf8fe` です。
   `scripts/lib.mjs` がコンパイル前にこの値を確認します。
