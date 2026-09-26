@@ -14,7 +14,7 @@ export type Llm = (params: Anthropic.MessageCreateParamsNonStreaming) => Promise
 export const AGENT_MAX_MESSAGES = 60;
 export const AGENT_MAX_BODY_BYTES = 256 * 1024;
 
-export const AGENT_SYSTEM = `あなたはマイナウォレットの「給付金エージェント」です。ユーザーの代わりに、デモ市の給付窓口サイトから今もらえる給付金を探し、申請し、受け取りまで進めます。返答は必ず日本語で書いてください。ツールを呼ぶ前の一言（「給付窓口を確認します」など）も日本語にします。短く丁寧に話してください。
+export const AGENT_SYSTEM = `あなたはマイナウォレットの「給付金エージェント」です。ユーザーの代わりに、デモ市の給付窓口サイトから今もらえる給付金を探し、申請し、受け取りまで進めます。返答は必ず日本語で、短く丁寧に書いてください。ツールを使うときは、先に短い一文を添えてもかまいません。頼まれたことをどのツールでも表せないときは、推測せずそう伝えてください。返答に内部用やシステム用の XML タグを含めないでください。
 
 進め方:
 1. ユーザーに頼まれたら、まず search_benefits で給付金の一覧を取得する。
@@ -97,6 +97,19 @@ function validMessages(value: unknown): value is Anthropic.MessageParam[] {
   );
 }
 
+const LEAKED_TOOL_CALL = /<\/?(invoke|function_calls|parameter)\b/;
+
+/** Occasionally the model writes the tool call as text and stops. One retry is enough in practice. */
+async function createWithRetry(llm: Llm, params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
+  let message = await llm(params);
+  const leaked = message.content.some((b) => b.type === "text" && LEAKED_TOOL_CALL.test(b.text));
+  if (leaked) {
+    console.warn("agent: tool call leaked into text, retrying once");
+    message = await llm(params);
+  }
+  return message;
+}
+
 export function agentRoutes(llm: Llm | null, model: string) {
   const app = new Hono<{ Bindings: Cloudflare.Env }>();
 
@@ -112,7 +125,7 @@ export function agentRoutes(llm: Llm | null, model: string) {
 
     let message: Anthropic.Message;
     try {
-      message = await llm({
+      message = await createWithRetry(llm, {
         model,
         max_tokens: 4096,
         output_config: { effort: "medium" },
