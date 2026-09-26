@@ -28,7 +28,7 @@ npm test                # deploys to a local anvil (chain id 80002) with a dispo
 npm run verify:dry-run  # verifies against a real Amoy node with a state override; deploys nothing
 ```
 
-To deploy to Amoy, fund a disposable, testnet-only key with POL from a faucet. The deployment uses about 1.33 million gas.
+To deploy to Amoy, fund a disposable, testnet-only key with POL from a faucet. The deployment uses about 1.31 million gas (1,314,611 for v2, recorded in `deployments/amoy.json`).
 The key is read only from an environment variable and is never written to a file.
 
 ```sh
