@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { createPublicClient, createWalletClient, defineChain, getAddress, http, isHex, size } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createApp, type Deps } from "./app";
@@ -9,6 +10,11 @@ const unconfiguredVerifier: Verifier = {
     throw new Error("BENEFIT_AGE_GATE_ADDRESS is not set");
   },
 };
+
+function llmFor(apiKey: string) {
+  const client = new Anthropic({ apiKey, maxRetries: 1, timeout: 60_000 });
+  return (params: Anthropic.MessageCreateParamsNonStreaming) => client.messages.create(params);
+}
 
 function deps(env: Cloudflare.Env): Deps {
   const chain = defineChain({
@@ -38,6 +44,8 @@ function deps(env: Cloudflare.Env): Deps {
     payout,
     now: () => Math.floor(Date.now() / 1000),
     receiptWaitMs: 8000,
+    llm: env.ANTHROPIC_API_KEY ? llmFor(env.ANTHROPIC_API_KEY) : null,
+    agentModel: env.AGENT_MODEL,
   };
 }
 

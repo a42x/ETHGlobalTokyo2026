@@ -18,6 +18,8 @@ function setup(overrides: Partial<Deps> = {}) {
     payout: mockPayout,
     now: () => clock,
     receiptWaitMs: 50,
+    llm: null,
+    agentModel: "test-model",
     ...overrides,
   });
   const call = async (method: string, path: string, body?: unknown) => {
