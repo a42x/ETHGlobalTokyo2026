@@ -46,7 +46,7 @@ Details of the proof and the contracts, including measurements and trust assumpt
 | Contracts | [`contracts/`](contracts/) | `BenefitAgeGate` (binds the proof to the claim, checks time and root key) and `BenefitOffice` (verifies through the gate, pays JPYC once per wallet). Foundry. |
 | Verifier | [`zk-age-verifier/`](zk-age-verifier/) | Groth16 verifier generated from the age circuit's verifying key, with deployment and verification scripts. |
 | Worker | [`worker/`](worker/) | Cloudflare Worker (Hono, viem, D1). Benefit office API, the proof check and payout, and the LLM proxy for the agent. |
-| Agent mini app | a42x/miniapp-playground, deployed at <https://miniapp-playground.web.app/agent/> | Chat UI and the browser-side agent loop that runs the tools. |
+| Agent mini app | a42x/miniapp-playground (private), deployed at <https://miniapp-playground.web.app/agent/> | Chat UI and the browser-side agent loop that runs the tools. |
 | Wallet | MynaWallet app (a42x/mynawallet-mobile, private; development build) | `Myna.jpki.prove`: consent sheet, NFC, certificate checks and the native prover. |
 
 ## Deployed on Polygon Amoy (chain id 80002)
@@ -60,7 +60,7 @@ Details of the proof and the contracts, including measurements and trust assumpt
 | Groth16 Verifier | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
 | JPYC | [`0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29`](https://amoy.polygonscan.com/address/0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29) |
 
-MynaWallet's development backend is connected to the JPKI test environment, so its wallets are registered with test cards, and the Worker points at the test-card office. The same circuit and verifier accept real cards. Which environment a proof belongs to is decided by the root key each gate pins.
+MynaWallet's development backend is connected to the JPKI test environment, so its wallets are registered with test cards, and the Worker points at the test-card office. The same circuit and verifier are designed to accept real cards too (the real-card office uses a gate that pins the production J-LIS roots), but no real card has claimed through the v2 verifier yet. Which environment a proof belongs to is decided by the root key each gate pins.
 
 The runs with a real card used the first verifier, before it accepted test cards. Their claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104). All deployments, including the retired ones, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
 
@@ -103,7 +103,7 @@ npm run db:migrate:local
 npx wrangler dev
 ```
 
-Without `OPERATOR_PRIVATE_KEY` the Worker refuses to pay (`PAYOUT_FAILED`). Without `ANTHROPIC_API_KEY` the agent route answers `503`, and the mini app falls back to a scripted agent.
+Without `OPERATOR_PRIVATE_KEY` the Worker refuses to pay (`PAYOUT_MISCONFIGURED`, 503). Other payout failures come back as `OPERATOR_FUNDS_LOW`, `OFFICE_FUNDS_LOW` or `PAYOUT_FAILED` with a reason, and are logged. Without `ANTHROPIC_API_KEY` the agent route answers `503`, and the mini app falls back to a scripted agent.
 
 ## MultiBaas
 
@@ -112,7 +112,7 @@ We did not use MultiBaas. The Worker reads from and writes to Polygon Amoy with 
 ## Known limitations
 
 - The Groth16 setup was run by a single party and is not audited. Certificate revocation is not checked by the proof.
-- The contract cannot tell whether the card belongs to the wallet's owner. Before proving, the wallet asks MynaWallet's backend, which checks the card with the JPKI service (revocation included) against the user's identity record, and stops if the card is someone else's (a42x/mynawallet-mobile#812). This check runs in the app and the backend, not on-chain.
+- The contract cannot tell whether the card belongs to the wallet's owner. Before proving, the wallet asks MynaWallet's backend, which checks the card with the JPKI service (revocation included) against the user's identity record, and stops if the card is someone else's (a42x/mynawallet-mobile#812, private). This check runs in the app and the backend, not on-chain.
 - iOS only, Polygon Amoy testnet only. The owner can clear a paid flag (`resetPaid`) to retake the demo.
 
 See [docs/submission-zk.md](docs/submission-zk.md) for the full list.
@@ -136,11 +136,24 @@ Never commit:
 - Anything from a real card: certificates, signatures, birth dates, or proofs made with a real card.
 - Internal server settings or host names.
 
-Put secrets in Cloudflare with `wrangler secret put`, and locally in `.dev.vars`. The Foundry deploy key is read only from an environment variable. The operator is a demo-only account. Before pushing, check:
+Put secrets in Cloudflare with `wrangler secret put`, and locally in `.dev.vars`. The Foundry deploy key is kept in an environment variable and passed to `forge script --private-key` on the command line; it is never written to a file in this repository. The operator is a demo-only account. Before pushing, check:
 
 ```sh
 git diff --cached | grep -iE 'sk-ant|PRIVATE_KEY=|0x[0-9a-f]{64}'
 ```
+
+## Prior work and what we built during the hackathon
+
+Built before the hackathon (Continuity):
+- **MynaWallet** (the wallet app, its backend and the mini app SDK) is our team's existing product.
+- **ZeroKeyMate** was built earlier by a team member (Susumu Tomita). It is the source of the `jpki_age` circuit, the native prover runtime and the age gate design.
+
+Built during the hackathon (2026-09-25 to 09-26):
+- `BenefitOffice`, `BenefitAgeGate` (adapted from ZeroKeyMate's `MateAgeGate` for Polygon Amoy), and the gates for test cards and synthetic data.
+- The change to the circuit's signing-policy check so that it also accepts JPKI-TEST cards ([`d24fafc`](https://github.com/susumutomita/ZeroKeyMate/commit/d24fafc97ac11c50e46ff240fb3d08ea82143a73)), and the proving key and verifier built from it.
+- The Worker: the benefit office API, the LLM proxy, the chain reads and the payout.
+- The agent mini app.
+- In MynaWallet: `Myna.jpki.prove` (consent sheet, NFC, TypeScript witness builder, native prover bridge) and the card-owner check.
 
 ## Attribution and license
 
