@@ -1,7 +1,5 @@
 # Myna Agent
 
-<!-- The project name is still being decided (a42x/pm#76). Change it here and in the summary below. -->
-
 **An AI agent in MynaWallet that finds government benefits you can receive and claims them for you, proving with your My Number Card that you are 20 or older without revealing your birth date, and receiving the payout in JPYC after the proof is verified on-chain.**
 
 This repository holds the hackathon code for ETHGlobal Tokyo 2026: the benefit office contracts, the Groth16 verifier, and the Cloudflare Worker that serves the agent and the benefit office API.
