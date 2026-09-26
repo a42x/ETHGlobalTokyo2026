@@ -2,6 +2,10 @@
 
 **An AI agent in MynaWallet that finds government benefits you can receive and claims them for you, proving with your My Number Card that you are 20 or older without revealing your birth date, and receiving the payout in JPYC after the proof is verified on-chain.**
 
+- **Prize:** Curvegrid, Best AI Agent Project. See [how the project meets it](#prize-curvegrid-best-ai-agent-project).
+- **Live:** the contracts are on Polygon Amoy (chain id 80002), and the Worker is at <https://benefit-office.ethglobal2026.workers.dev>.
+- **An agent-driven payout on Amoy:** [`0x8287b5fd…8d33`](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33). The agent's `submit_proof` led to one `claim()` that verified the proof and paid 500 JPYC.
+
 This repository holds the hackathon code for ETHGlobal Tokyo 2026: the benefit office contracts, the Groth16 verifier, and the Cloudflare Worker that serves the agent and the benefit office API.
 
 ## What it does
@@ -10,44 +14,165 @@ This repository holds the hackathon code for ETHGlobal Tokyo 2026: the benefit o
 2. The agent (Claude, through tools) searches a demo benefit office and finds a benefit that requires the recipient to be 20 or older.
 3. The agent explains what will be proven and asks for consent. The user agrees.
 4. The agent creates a claim. The benefit office issues a challenge bound to this benefit, this wallet and this office.
-5. MynaWallet reads the user's physical My Number Card over NFC. The card signs the challenge after the user enters their signing PIN. The phone then generates a zero-knowledge proof of "20 or older" locally. The birth date, the certificate and the card signature never leave the phone.
+5. MynaWallet shows its own consent sheet and reads the user's physical My Number Card over NFC. After the user enters the signing PIN, the card signs twice:
+   - for MynaWallet's backend, which checks with the JPKI service that the card is valid and belongs to the logged-in user;
+   - over the claim's challenge.
+
+   The phone then generates a zero-knowledge proof of "20 or older" locally. The benefit office, the agent and the chain receive only the proof. They never see the birth date, the certificate or the card signature.
 6. The agent submits the proof. The benefit office contract on Polygon Amoy verifies it and pays 500 JPYC to the user's wallet in the same transaction.
 7. A second claim from the same wallet is refused by the contract.
 
+The agent, the mini app and the wallet work in English and Japanese.
+
 Japan's government plans to let people use AI agents with the My Number Card, connecting AI to administrative systems (priority plan approved by the Cabinet on 2026-07-21, [CNET Japan](https://japan.cnet.com/article/35250805/)). This demo shows what such an agent can do while disclosing only what the office needs.
 
-## How the agent acts on-chain
+## Prize: Curvegrid, Best AI Agent Project
 
+The prize asks for AI agents that understand blockchain activity and take on-chain action, and it lists "policy-aware transaction agents" as an example. Myna Agent is one. It acts for the user, but a contract, not the agent's prompt, enforces the rules it acts under.
+
+### The prize's theme, in this repository
+
+| The prize asks for | How Myna Agent does it | Where |
+| --- | --- | --- |
+| **Taking on-chain action** | The agent's `submit_proof` tool makes the Worker send `BenefitOffice.claim()`. That transaction verifies the proof and transfers 500 JPYC. [Example](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33). | [`worker/src/agent.ts`](worker/src/agent.ts) (tools), [`worker/src/app.ts`](worker/src/app.ts) (`POST /benefit-office/v1/claims/:id/proof`), [`worker/src/payout.ts`](worker/src/payout.ts), [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol) |
+| **Understanding chain state** | The Worker reads the chain before each step that commits anything:<br>• `create_claim` refuses before any card is read if the office already records a payout for this wallet.<br>• `submit_proof` asks `BenefitAgeGate.verifyClaimAge` with `eth_call`, then simulates `claim()`, and sends only if both pass.<br>• A failure comes back to the agent as a named reason, such as `CLAIM_ALREADY_PAID` or `OFFICE_FUNDS_LOW`, which its prompt explains to the user. | [`worker/src/app.ts`](worker/src/app.ts), [`worker/src/verify.ts`](worker/src/verify.ts), [`worker/src/payout.ts`](worker/src/payout.ts) |
+| **Staying within policy** | The agent holds no key, no funds, no proof and no personal data. The operator key that sends the transaction can only call `claim()`.<br>The contract decides whether to pay:<br>• once per wallet<br>• only with a proof bound to this office, benefit, wallet and amount<br>• only inside the proof's 15-minute window<br>• only for a card under a trust root pinned in the gate<br>• only through the verifier code pinned in the gate | [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol), [`contracts/src/BenefitAgeGate.sol`](contracts/src/BenefitAgeGate.sol) |
+| **Reading the chain as its own tool** (not live yet) | We implemented and tested two more agent tools on the Worker: `check_eligibility` (the registered amount, the office balance and the paid flag, read on chain) and `verify_payment` (the receipt and the JPYC `Transfer` log of the payout). They are switched off with `AGENT_ONCHAIN_TOOLS = "false"` until the mini app can run them ([#24](https://github.com/a42x/ETHGlobalTokyo2026/issues/24)). The demo does not use them. | [`worker/src/onchain.ts`](worker/src/onchain.ts), `GET /benefit-office/v1/onchain/eligibility`, `GET /benefit-office/v1/claims/:id/onchain` |
+
+### The prize's submission requirements
+
+| Requirement | Where |
+| --- | --- |
+| One-sentence summary | The top of this README |
+| Contracts | [`contracts/src/`](contracts/src/) and [`zk-age-verifier/contracts/Verifier.sol`](zk-age-verifier/contracts/Verifier.sol) |
+| Tests | [`contracts/test/`](contracts/test/) (Foundry, including a fork test against the deployed verifier), [`zk-age-verifier/scripts/test-local.mjs`](zk-age-verifier/scripts/test-local.mjs) (valid and tampered proofs on a local chain), [`worker/test/`](worker/test/) (Vitest; some tests read Amoy) |
+| Documentation | This README, [`docs/submission-zk.md`](docs/submission-zk.md), [`contracts/README.md`](contracts/README.md), [`zk-age-verifier/README.md`](zk-age-verifier/README.md) |
+| Team introduction with handles | [Team](#team) |
+| Setup and testing | [Setup and testing](#setup-and-testing) |
+| How MultiBaas was used | Not used. See [MultiBaas](#multibaas). |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph phone["iPhone: MynaWallet app"]
+    miniapp["Agent mini app (WebView)<br/>chat UI and agent loop<br/>holds the conversation and the proof"]
+    prover["Myna.jpki.prove<br/>consent sheet, NFC,<br/>native Groth16 prover"]
+    card[("My Number Card")]
+  end
+  subgraph worker["Cloudflare Worker (this repo)"]
+    proxy["POST /agent/v1/messages<br/>LLM proxy with fixed<br/>system prompt and tools"]
+    office["/benefit-office/v1/*<br/>benefits, claims, proof check, payout"]
+    db[("D1<br/>claims and nonces")]
+  end
+  claude["Claude<br/>(Anthropic API)"]
+  backend["MynaWallet backend<br/>card-owner check with the JPKI service"]
+  subgraph amoy["Polygon Amoy"]
+    bo["BenefitOffice"]
+    gate["BenefitAgeGate"]
+    verifier["Groth16 Verifier"]
+    jpyc["JPYC"]
+  end
+
+  miniapp -- "messages and tool results<br/>(never the proof)" --> proxy
+  proxy --> claude
+  miniapp -- "tool calls" --> office
+  miniapp -- "prove this claim" --> prover
+  prover -- "NFC and signing PIN" --> card
+  prover -- "certificate and a separate<br/>card signature" --> backend
+  prover -- "proof, 384 bytes" --> miniapp
+  office --> db
+  office -- "eth_call and simulate" --> gate
+  office -- "operator sends claim()" --> bo
+  bo --> gate
+  gate --> verifier
+  bo -- "transfer 500 JPYC" --> jpyc
 ```
-MynaWallet app (iPhone, development build)
-  agent mini app (WebView) ── tools ──> Worker  POST /agent/v1/messages   (Claude, system prompt and tools fixed on the server)
-        │                          └──> Worker  /benefit-office/v1/*       (benefits, claims, proof)
-        │ Myna.jpki.prove                          │
-        v                                          v
-  wallet: NFC + on-device Groth16 prover     eth_call BenefitAgeGate.verifyClaimAge
-                                             operator sends BenefitOffice.claim()  ──> Polygon Amoy
-                                                verify the proof + transfer JPYC in one transaction
+
+One claim, end to end:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant M as Agent mini app
+  participant L as Claude via Worker proxy
+  participant W as Worker benefit office
+  participant P as MynaWallet prover
+  participant C as My Number Card
+  participant A as Polygon Amoy
+
+  U->>M: Find benefits I can receive now
+  M->>L: conversation
+  L-->>M: tool call search_benefits
+  M->>W: GET /benefits
+  W-->>M: youth support, 20 or older, 500 JPYC
+  L-->>U: explains what will be proven and asks for consent
+  U->>M: agrees
+  L-->>M: tool call create_claim
+  M->>W: POST /claims
+  W->>A: read paid flag for this wallet
+  W-->>M: claim with claimHash, nonce, expiresAt
+  M->>P: prove this claim
+  P->>U: consent sheet and signing PIN
+  P->>C: NFC read, card signs twice
+  P->>P: card-owner check, then Groth16 proof on device
+  P-->>M: proof and public inputs only
+  M->>L: tool result ok, proof held in the mini app
+  L-->>M: tool call submit_proof
+  M->>W: POST /claims/id/proof
+  W->>A: eth_call BenefitAgeGate.verifyClaimAge
+  W->>A: simulate, then send BenefitOffice.claim()
+  A->>A: verify proof, set paid, transfer 500 JPYC
+  W-->>M: paid and tx hash
+  M->>L: tool result
+  L-->>U: 500 JPYC has arrived
 ```
 
-- **Reading chain state.** Before paying, the Worker asks `BenefitAgeGate` on Amoy, with `eth_call`, whether the proof is valid for this claim. It then simulates `claim()` and does not send it if it would revert, for example with `AlreadyPaid()`.
-- **Acting on-chain.** The agent's `submit_proof` tool makes the Worker send `BenefitOffice.claim()` from an operator key. That key can only call `claim()`. The contract checks everything again and pays in the same transaction.
-- **Staying within policy.** The agent never sees the proof or any personal data; the mini app passes the proof straight to the office. The wallet asks the user for consent before reading the card. The contract, not the agent, decides whether to pay:
-  - Each wallet can be paid once.
-  - The proof must be bound to this claim.
-  - The proof must be inside its 15-minute window.
-  - The certificate must chain to a root pinned in the gate: the J-LIS roots for real cards, the JPKI-TEST roots for test cards.
-
-Details of the proof and the contracts, including measurements and trust assumptions: [docs/submission-zk.md](docs/submission-zk.md).
-
-## Components
+The proof never enters the conversation. The LLM sees the conversation, tool names and tool results. The proof goes from the wallet to the mini app, to the Worker and on to the chain. For a proof, the LLM sees only `{ ok, proof_type, proof_ref: "held" }`.
 
 | Part | Where | What |
 | --- | --- | --- |
 | Contracts | [`contracts/`](contracts/) | `BenefitAgeGate` (binds the proof to the claim, checks time and root key) and `BenefitOffice` (verifies through the gate, pays JPYC once per wallet). Foundry. |
 | Verifier | [`zk-age-verifier/`](zk-age-verifier/) | Groth16 verifier generated from the age circuit's verifying key, with deployment and verification scripts. |
-| Worker | [`worker/`](worker/) | Cloudflare Worker (Hono, viem, D1). Benefit office API, the proof check and payout, and the LLM proxy for the agent. |
-| Agent mini app | a42x/miniapp-playground (private), deployed at <https://miniapp-playground.web.app/agent/> | Chat UI and the browser-side agent loop that runs the tools. |
-| Wallet | MynaWallet app (a42x/mynawallet-mobile, private; development build) | `Myna.jpki.prove`: consent sheet, NFC, certificate checks and the native prover. |
+| Worker | [`worker/`](worker/) | Cloudflare Worker (Hono, viem, D1). Benefit office API, the proof check and payout, the on-chain reads, and the LLM proxy for the agent. |
+| Agent mini app | a42x/miniapp-playground (private), deployed at <https://miniapp-playground.web.app/agent/> | Chat UI and the browser-side agent loop that runs the tools. Falls back to a scripted agent when the LLM is unavailable. |
+| Wallet | MynaWallet app (a42x/mynawallet-mobile, private; development build) | `Myna.jpki.prove`: consent sheet, NFC, card-owner check, certificate checks and the native prover. |
+
+## Technical highlights
+
+**A government PKI signature, proven in zero knowledge on a phone.** The `jpki_age` circuit (Noir) proves all of the following, revealing none of the certificate:
+- The card's signing certificate is signed by a J-LIS root (RSA-2048, SHA-256).
+- The certificate follows the J-LIS signing profile and is valid for the claim window.
+- The card's key signed `"ZeroKeyMate age authentication v1\0" || claimHash || nonce`.
+- The birth date makes the holder 20 or older at the reference time, counted in Japan time.
+
+ProveKit's Groth16 backend runs natively on the iPhone as a Rust library behind an Expo module. On an iPhone 16 Pro, proving took about 12.4 s in a single observation, and the proof is 384 bytes.
+
+**The proof is bound to one on-chain action.** The card signs the claim hash and a nonce issued by the office. `BenefitOffice` recomputes `claimHash = keccak256(abi.encode(chainId, office, benefitId, recipient, amount, 20))` itself, so a proof made for one wallet, benefit, office or chain fails for any other. It is also valid only inside its 15-minute window. The card signs only after its signing PIN is entered, so each proof also shows that the card and its PIN were used for this exact claim.
+
+**The agent decides; it does not hold anything.** The LLM chooses tools, but:
+- The Worker fixes the system prompt and the tool list, so a client cannot add tools.
+- The mini app runs the tools and keeps the proof out of the conversation.
+- The transaction is sent by an operator key that can only call `claim()`.
+- Every rule that decides whether money moves lives in the contract.
+
+**Verify and pay in one transaction.** `claim()` checks the paid flag, has the gate verify the proof, sets the flag and transfers JPYC, all in one transaction. If any step fails, nothing moves. One claim costs about 669,000 gas, of which proof verification is about 370,000.
+
+**Trust anchors are constants in bytecode.**
+- The gate compiles in the SHA-256 of each accepted root key's modulus. No caller, admin or server can add a trust root at runtime.
+- One circuit accepts both production cards and JPKI test cards. The root a gate pins, not a flag in the proof, decides which it accepts. The J-LIS gate accepts only the two production roots, so a test card's proof fails there.
+- The gate also pins the verifier's code hash.
+- We compared the deployed bytecode of the gates and offices with the source at commit `1b6d87d`, and it matched.
+
+**Read the chain before spending gas, and say why when it fails.**
+- The Worker checks the paid flag before issuing a challenge, so nobody reads a card for a claim that cannot pay.
+- Before sending, it verifies the proof with `eth_call` and simulates `claim()`.
+- Reverts and node errors become named codes the agent can explain: `CLAIM_ALREADY_PAID`, `OPERATOR_FUNDS_LOW`, `OFFICE_FUNDS_LOW`, `PAYOUT_MISCONFIGURED` or `PAYOUT_FAILED`.
+
+**Card-owner binding without a new API.** In the same NFC session, the card makes a second signature for MynaWallet's existing eKYC check. That check has the JPKI service verify the certificate, including revocation, and compares the card holder with the logged-in user. Someone else's card is stopped before any proof is made. This runs in the app and MynaWallet's backend, not on-chain.
+
+Details, measurements and trust assumptions: [docs/submission-zk.md](docs/submission-zk.md).
 
 ## Deployed on Polygon Amoy (chain id 80002)
 
@@ -61,6 +186,13 @@ Details of the proof and the contracts, including measurements and trust assumpt
 | JPYC | [`0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29`](https://amoy.polygonscan.com/address/0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29) |
 
 MynaWallet's development backend is connected to the JPKI test environment, so its wallets are registered with test cards, and the Worker points at the test-card office. The same circuit and verifier are designed to accept real cards too (the real-card office uses a gate that pins the production J-LIS roots), but no real card has claimed through the v2 verifier yet. Which environment a proof belongs to is decided by the root key each gate pins.
+
+Example payouts with a test card and the current verifier, both to the test-card office:
+
+| Run | Transaction |
+| --- | --- |
+| Through the agent: mini app, Worker, `claim()` | [`0x8287b5fd…8d33`](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33) |
+| An earlier run with the same test card | [`0x6c877a40…1ec9`](https://amoy.polygonscan.com/tx/0x6c877a40f71bc08bccb8bb9da36d1fba25512501490d6fdd4661df22df761ec9) |
 
 The runs with a real card used the first verifier, before it accepted test cards. Their claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104). All deployments, including the retired ones, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
 
@@ -112,7 +244,8 @@ We did not use MultiBaas. The Worker reads from and writes to Polygon Amoy with 
 ## Known limitations
 
 - The Groth16 setup was run by a single party and is not audited. Certificate revocation is not checked by the proof.
-- The contract cannot tell whether the card belongs to the wallet's owner. Before proving, the wallet asks MynaWallet's backend, which checks the card with the JPKI service (revocation included) against the user's identity record, and stops if the card is someone else's (a42x/mynawallet-mobile#812, private). This check runs in the app and the backend, not on-chain.
+- The contract cannot tell whether the card belongs to the wallet's owner. Before proving, the wallet asks MynaWallet's backend, which checks the card with the JPKI service (revocation included) against the user's identity record, and stops if the card is someone else's (a42x/mynawallet-mobile#812, private). This check runs in the app and the backend, not on-chain. For it, the signing certificate and a separate card signature go to MynaWallet's backend. The benefit office never receives them.
+- The agent's own on-chain read tools (`check_eligibility`, `verify_payment`) are implemented on the Worker but switched off until the mini app runs them ([#24](https://github.com/a42x/ETHGlobalTokyo2026/issues/24)).
 - iOS only, Polygon Amoy testnet only. The owner can clear a paid flag (`resetPaid`) to retake the demo.
 
 See [docs/submission-zk.md](docs/submission-zk.md) for the full list.
@@ -154,6 +287,8 @@ Built during the hackathon (2026-09-25 to 09-26):
 - The Worker: the benefit office API, the LLM proxy, the chain reads and the payout.
 - The agent mini app.
 - In MynaWallet: `Myna.jpki.prove` (consent sheet, NFC, TypeScript witness builder, native prover bridge) and the card-owner check.
+
+[`docs/2026-09-25-benefit-office-worker-and-contracts.md`](docs/2026-09-25-benefit-office-worker-and-contracts.md) is the plan we wrote at the start (in Japanese). This README and [docs/submission-zk.md](docs/submission-zk.md) describe what was actually built.
 
 ## Attribution and license
 
