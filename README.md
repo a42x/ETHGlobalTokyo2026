@@ -105,7 +105,7 @@ sequenceDiagram
   L-->>M: tool call search_benefits
   M->>W: GET /benefits
   W-->>M: youth support, 20 or older, 500 JPYC
-  L-->>U: explains what will be proven and asks for consent
+  L-->>M: explains what will be proven and asks for consent
   U->>M: agrees
   L-->>M: tool call create_claim
   M->>W: POST /claims
@@ -114,7 +114,7 @@ sequenceDiagram
   M->>P: prove this claim
   P->>U: consent sheet and signing PIN
   P->>C: NFC read, card signs twice
-  P->>P: card-owner check, then Groth16 proof on device
+  P->>P: card-owner check with MynaWallet's backend, then Groth16 proof on device
   P-->>M: proof and public inputs only
   M->>L: tool result ok, proof held in the mini app
   L-->>M: tool call submit_proof
@@ -124,7 +124,8 @@ sequenceDiagram
   A->>A: verify proof, set paid, transfer 500 JPYC
   W-->>M: paid and tx hash
   M->>L: tool result
-  L-->>U: 500 JPYC has arrived
+  L-->>M: reply that the payout arrived
+  M-->>U: 500 JPYC has arrived
 ```
 
 The proof never enters the conversation. The LLM sees the conversation, tool names and tool results. The proof goes from the wallet to the mini app, to the Worker and on to the chain. For a proof, the LLM sees only `{ ok, proof_type, proof_ref: "held" }`.
@@ -153,7 +154,7 @@ ProveKit's Groth16 backend runs natively on the iPhone as a Rust library behind 
 - The Worker fixes the system prompt and the tool list, so a client cannot add tools.
 - The mini app runs the tools and keeps the proof out of the conversation.
 - The transaction is sent by an operator key that can only call `claim()`.
-- Every rule that decides whether money moves lives in the contract.
+- The contract alone decides whether to pay.
 
 **Verify and pay in one transaction.** `claim()` checks the paid flag, has the gate verify the proof, sets the flag and transfers JPYC, all in one transaction. If any step fails, nothing moves. One claim costs about 669,000 gas, of which proof verification is about 370,000.
 
