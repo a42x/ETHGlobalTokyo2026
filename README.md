@@ -12,6 +12,8 @@ contracts/   ProvekitGroth16Verifier / BenefitAgeGate / BenefitOffice（Foundry,
 docs/        SPEC
 ```
 
+提出用の説明 (ZK とコントラクト、英語): [docs/submission-zk.md](docs/submission-zk.md)
+
 ウォレット側（a42x/mynawallet-mobile）、SDK（a42x/miniapp-sdk）、ミニアプリ UI（a42x/miniapp-playground）は各リポジトリで開発する。全体設計と進捗は a42x/pm#67。
 
 ## 機密情報の扱い（public repo）
