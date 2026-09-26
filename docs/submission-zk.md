@@ -2,7 +2,7 @@
 
 This covers the zero-knowledge and on-chain part of the demo. The agent mini app and its conversation are described separately.
 
-Status as of 2026-09-26 12:00 JST.
+Status as of 2026-09-26 15:30 JST.
 
 ## Summary
 
@@ -17,7 +17,14 @@ With a real My Number card (issued under the production J-LIS roots) on an iPhon
 3. `BenefitOffice.claim()` on Amoy had `BenefitAgeGate` check the proof, then transferred 500 JPYC to the wallet in the same transaction.
 4. A second claim for the same wallet was refused with `AlreadyPaid()`. The server that plays the benefit office simulates each claim before sending it, so no transaction was sent.
 
-The claim transactions are listed on the `BenefitOffice` page on Polygonscan (address below).
+These runs used the first verifier, which accepted only the production signing policy. The claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104).
+
+With a JPKI-TEST card (the test environment that MynaWallet's development backend uses), on the current verifier:
+
+1. Before proving, the app had MynaWallet's backend check the card with the JPKI service against the logged-in user's identity record.
+   - A test card that did not belong to the wallet's owner was stopped at this step (`card_owner_mismatch`), before any proof was made.
+   - The card that did belong to the owner passed.
+2. The phone proved the claim with the new proving key. `BenefitAgeGateJpkiTest` accepted it, and `BenefitOffice` paid 500 JPYC to the wallet ([transaction](https://amoy.polygonscan.com/tx/0x6c877a40f71bc08bccb8bb9da36d1fba25512501490d6fdd4661df22df761ec9)).
 
 We also replayed a recorded proof on an Amoy fork, with the clock set back to its validity window:
 
@@ -42,6 +49,7 @@ The earlier runs used a local test page and a local server in place of the agent
 The circuit is `jpki_age` from ZeroKeyMate, written in Noir. It proves all of the following:
 
 - The card's signing certificate is signed (RSA-2048, SHA-256) by a root key. The SHA-256 of that key's modulus is the public `rootKeyHash`.
+- The certificate follows the J-LIS signing certificate profile. The signing policy may be the production one (1.2.392.200149.8.5.1.1.20) or the JPKI test environment's (1.2.392.200149.8.5.1.0.20); a test card showed that nothing else differs. The gate decides which environment it accepts by the root key it pins.
 - The certificate is valid from `referenceTime` to `expiresAt`.
 - The key in that certificate signed `"ZeroKeyMate age authentication v1\0" || claimHash || nonce` (98 bytes).
   - This is the card's own signature, made with the user's signing PIN.
@@ -59,16 +67,18 @@ The contracts are on Polygon Amoy (chain id 80002). The source is in `contracts/
 - **`BenefitAgeGate`**: its `verifyClaimAge(claimHash, nonce, expiresAt, proof, inputs)` returns true only when all of the following hold.
   - The public inputs carry this `claimHash` and `nonce`.
   - The public inputs carry `referenceTime = expiresAt - 900`, and the current block time is inside that window.
-  - `rootKeyHash` is one of the two pinned J-LIS signing roots, and the claim window falls inside that root's validity period.
+  - `rootKeyHash` is one of the roots pinned in that gate (two J-LIS signing roots in `BenefitAgeGate`, four JPKI-TEST roots in `BenefitAgeGateJpkiTest`), and the claim window falls inside that root's validity period.
   - The Verifier's code hash equals the one fixed at deployment.
   - The Verifier accepts the proof.
 - **`BenefitOffice`**: `claim()` recomputes `claimHash = keccak256(abi.encode(chainId, office, benefitId, recipient, amount, 20))` itself, so a proof made for one wallet or one benefit cannot be used for another. It then asks the gate, marks the recipient as paid, and transfers JPYC.
 
 | Contract | Address |
 | --- | --- |
-| Groth16 Verifier | [`0xb89d8e0c4a345ead852ab919548734c4f506596c`](https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c) |
-| `BenefitAgeGate` (J-LIS roots) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
-| `BenefitOffice` (real cards) | [`0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104) |
+| Groth16 Verifier | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
+| `BenefitAgeGate` (J-LIS roots) | [`0x44a0c9187cacfd2211d6e36e662b81e21950fdee`](https://amoy.polygonscan.com/address/0x44a0c9187cacfd2211d6e36e662b81e21950fdee) |
+| `BenefitOffice` (real cards) | [`0x946105a8d563c70be8d6b8682047e9064878c885`](https://amoy.polygonscan.com/address/0x946105a8d563c70be8d6b8682047e9064878c885) |
+| `BenefitAgeGateJpkiTest` (JPKI-TEST roots) | [`0x70bc454c84536f05934051ba7b7bb91e3c368588`](https://amoy.polygonscan.com/address/0x70bc454c84536f05934051ba7b7bb91e3c368588) |
+| `BenefitOffice` (test cards; used by the Worker) | [`0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2`](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) |
 | JPYC | [`0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29`](https://amoy.polygonscan.com/address/0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29) |
 
 We checked that the deployed `BenefitOffice` and `BenefitAgeGate` bytecode matches this repository's source at the deploy commits. All deployments, including the gates for test cards, are in `contracts/deployments/amoy.json`.
@@ -89,9 +99,9 @@ These are single observations, not benchmarks.
 
 - **Single-party trusted setup.** The Groth16 setup was run once on one machine, not in a multi-party ceremony. Whoever held the setup randomness could forge proofs.
 - **Unaudited.** ProveKit's Groth16 backend is an open experimental branch. The masking patch and the generated Solidity verifier are not audited.
-- **No revocation check.** A revoked certificate still produces a valid proof.
-- **What the proof does not show.** It does not show identity. It shows only that the holder of a card chaining to a pinned J-LIS root, who signed this claim with that card, is 20 or older. It does not encrypt anything.
-- **Once per wallet, not once per person.** The office records `paid[benefitId][recipient]`. The circuit has no nullifier, so the same card could claim again for a different wallet. MynaWallet issues one wallet per card, but the contract does not check this.
+- **No revocation check in the proof.** A revoked certificate still produces a valid proof. The app's owner check asks the JPKI service, which does check revocation, but that is not enforced on-chain.
+- **What the proof does not show.** It does not show identity. It shows only that the holder of a card chaining to a root pinned in the gate, who signed this claim with that card, is 20 or older. It does not encrypt anything.
+- **Once per wallet, not once per person.** The office records `paid[benefitId][recipient]`. The circuit has no nullifier, so the same card could claim again for a different wallet. MynaWallet issues one wallet per person, and before proving the app now has MynaWallet's backend confirm that the card belongs to the logged-in user (JPKI check against the identity record). That check runs in the app and the backend; the contract does not check it.
 - **Operator and owner powers.** Only the office's operator can call `claim()`, and the operator pays the gas. The owner can withdraw the JPYC.
   - The owner can also clear a paid flag with `resetPaid`, which exists only for retaking the demo and must not be in a real office.
 - **Scope.** iOS only, Polygon Amoy testnet only. The 653 MiB proving key is copied onto the phone by hand. The app does not download the key or check its hash.

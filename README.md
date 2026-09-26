@@ -35,7 +35,7 @@ MynaWallet app (iPhone, development build)
   - Each wallet can be paid once.
   - The proof must be bound to this claim.
   - The proof must be inside its 15-minute window.
-  - The certificate must chain to a pinned J-LIS root.
+  - The certificate must chain to a root pinned in the gate: the J-LIS roots for real cards, the JPKI-TEST roots for test cards.
 
 Details of the proof and the contracts, including measurements and trust assumptions: [docs/submission-zk.md](docs/submission-zk.md).
 
@@ -53,12 +53,16 @@ Details of the proof and the contracts, including measurements and trust assumpt
 
 | Contract | Address |
 | --- | --- |
-| `BenefitOffice` (real My Number Cards) | [`0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104) |
-| `BenefitAgeGate` (J-LIS roots) | [`0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803`](https://amoy.polygonscan.com/address/0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803) |
-| Groth16 Verifier | [`0xb89d8e0c4a345ead852ab919548734c4f506596c`](https://amoy.polygonscan.com/address/0xb89d8e0c4a345ead852ab919548734c4f506596c) |
+| `BenefitOffice` (test My Number Cards; the Worker uses this one) | [`0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2`](https://amoy.polygonscan.com/address/0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2) |
+| `BenefitAgeGateJpkiTest` (JPKI-TEST roots) | [`0x70bc454c84536f05934051ba7b7bb91e3c368588`](https://amoy.polygonscan.com/address/0x70bc454c84536f05934051ba7b7bb91e3c368588) |
+| `BenefitOffice` (real My Number Cards) | [`0x946105a8d563c70be8d6b8682047e9064878c885`](https://amoy.polygonscan.com/address/0x946105a8d563c70be8d6b8682047e9064878c885) |
+| `BenefitAgeGate` (J-LIS roots) | [`0x44a0c9187cacfd2211d6e36e662b81e21950fdee`](https://amoy.polygonscan.com/address/0x44a0c9187cacfd2211d6e36e662b81e21950fdee) |
+| Groth16 Verifier | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
 | JPYC | [`0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29`](https://amoy.polygonscan.com/address/0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29) |
 
-The claim transactions made with a real card are listed on the `BenefitOffice` page. All deployments, including the gates for test cards, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
+MynaWallet's development backend is connected to the JPKI test environment, so its wallets are registered with test cards, and the Worker points at the test-card office. The same circuit and verifier accept real cards. Which environment a proof belongs to is decided by the root key each gate pins.
+
+The runs with a real card used the first verifier, before it accepted test cards. Their claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104). All deployments, including the retired ones, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
 
 The Worker is deployed at <https://benefit-office.ethglobal2026.workers.dev> (for example, `GET /benefit-office/v1/benefits`).
 
@@ -108,7 +112,7 @@ We did not use MultiBaas. The Worker reads from and writes to Polygon Amoy with 
 ## Known limitations
 
 - The Groth16 setup was run by a single party and is not audited. Certificate revocation is not checked by the proof.
-- One payout per wallet, not per person. The contract cannot tell whether the card belongs to the wallet's owner. A wallet-side check for this is in review (a42x/mynawallet-mobile#812); it is not enforced on-chain.
+- The contract cannot tell whether the card belongs to the wallet's owner. Before proving, the wallet asks MynaWallet's backend, which checks the card with the JPKI service (revocation included) against the user's identity record, and stops if the card is someone else's (a42x/mynawallet-mobile#812). This check runs in the app and the backend, not on-chain.
 - iOS only, Polygon Amoy testnet only. The owner can clear a paid flag (`resetPaid`) to retake the demo.
 
 See [docs/submission-zk.md](docs/submission-zk.md) for the full list.

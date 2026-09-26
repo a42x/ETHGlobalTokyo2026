@@ -8,13 +8,14 @@ account_id = "cc425fa275d25e4909170bc8063c82e4"
 [vars]
 CHAIN_ID = "80002"
 RPC_URL = "https://polygon-amoy-bor-rpc.publicnode.com"
-# BenefitOffice and BenefitAgeGate for real My Number cards (J-LIS roots), contracts/deployments/amoy.json.
-# For JPKI-TEST test cards use office 0x7fA6E5a6DB7A45d2514Beb7F30c5F542A0EBD09f
-# and gate 0x0662cDd6AEA98Ca840cB3001188be4EFBb635a14. claimHash includes the office, so set both together.
+# BenefitOffice and BenefitAgeGate for JPKI-TEST test cards (contracts/deployments/amoy.json).
+# The development MynaWallet backend talks to the test J-LIS, so demo wallets are registered
+# with test cards. For real My Number cards use office 0x946105a8d563c70be8d6b8682047e9064878c885
+# and gate 0x44a0c9187cacfd2211d6e36e662b81e21950fdee. claimHash includes the office, so set both together.
 # The operator key is a secret: wrangler secret put OPERATOR_PRIVATE_KEY
-BENEFIT_OFFICE_ADDRESS = "0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104"
-BENEFIT_AGE_GATE_ADDRESS = "0x176d7299c1a118356fdd8Ed0D15A68B8FCf45803"
-AGE_VERIFIER_ADDRESS = "0xb89d8e0c4a345ead852ab919548734c4f506596c"
+BENEFIT_OFFICE_ADDRESS = "0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2"
+BENEFIT_AGE_GATE_ADDRESS = "0x70bc454c84536f05934051ba7b7bb91e3c368588"
+AGE_VERIFIER_ADDRESS = "0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078"
 JPYC_ADDRESS = "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29"
 CORS_ORIGINS = "https://miniapp-playground.web.app,https://miniapp-playground--*.web.app"
 AGENT_MODEL = "claude-opus-5"
