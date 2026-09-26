@@ -119,13 +119,13 @@ See [docs/submission-zk.md](docs/submission-zk.md) for the full list.
 
 We are the team behind [MynaWallet](https://x.com/MynaWallet) ([@MynaWallet](https://x.com/MynaWallet)).
 
-<!-- TODO: roles and handles for Hiroyuki Tachibana and Wataru Shinohara. -->
+<!-- TODO: role for Hiroyuki Tachibana; role and handles for Wataru Shinohara. -->
 
 | Member | Role | Handles |
 | --- | --- | --- |
 | Yoshitaka Shindo | Product manager. Worker, agent and agent mini app | GitHub [@shindyu](https://github.com/shindyu) |
 | Susumu Tomita | ZK age proof, contracts and verifier | GitHub [@susumutomita](https://github.com/susumutomita), X [@tonitoni415](https://x.com/tonitoni415) |
-| Hiroyuki Tachibana | TODO | TODO |
+| Hiroyuki Tachibana | TODO | X [@7pastelblackcat](https://x.com/7pastelblackcat) |
 | Wataru Shinohara | TODO | TODO |
 
 ## Secrets (this repository is public)
