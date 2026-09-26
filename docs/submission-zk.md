@@ -6,7 +6,7 @@ Status as of 2026-09-26 17:55 JST.
 
 ## Summary
 
-A MynaWallet user proves "I am 20 or older" with their physical My Number card, without revealing their birth date. The iPhone reads the card over NFC and generates a Groth16 proof on the device. A benefit office contract on Polygon Amoy verifies the proof, binds it to this claim, and pays 500 JPYC to the user's wallet in the same transaction. A second claim from the same wallet is refused.
+A MynaWallet user proves "I am 20 or older" with their physical My Number card, without revealing their birth date. The iPhone reads the card over NFC and generates a Groth16 proof on the device. A benefit office contract on Polygon Amoy verifies the proof, binds it to this claim, and pays the benefit in JPYC to the user's wallet in the same transaction. Each benefit's amount is registered in the contract, and the demo benefit pays 500 JPYC. A second claim for the same benefit from the same wallet is refused.
 
 ## What we ran
 
