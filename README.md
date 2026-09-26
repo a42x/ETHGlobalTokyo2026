@@ -39,6 +39,26 @@ The prize asks for AI agents that understand blockchain activity and take on-cha
 | **Staying within policy** | The agent holds no key, no funds, no proof and no personal data. The operator key that sends the transaction can only call `claim()`.<br>The contract decides whether to pay:<br>• once per wallet<br>• only with a proof bound to this office, benefit, wallet and amount<br>• only inside the proof's 15-minute window<br>• only for a card under a trust root pinned in the gate<br>• only through the verifier code pinned in the gate | [`contracts/src/BenefitOffice.sol`](contracts/src/BenefitOffice.sol), [`contracts/src/BenefitAgeGate.sol`](contracts/src/BenefitAgeGate.sol) |
 | **Reading the chain as its own tool** (not live yet) | We implemented and tested two more agent tools on the Worker: `check_eligibility` (the registered amount, the office balance and the paid flag, read on chain) and `verify_payment` (the receipt and the JPYC `Transfer` log of the payout). They are switched off with `AGENT_ONCHAIN_TOOLS = "false"` until the mini app can run them ([#24](https://github.com/a42x/ETHGlobalTokyo2026/issues/24)). The demo does not use them. | [`worker/src/onchain.ts`](worker/src/onchain.ts), `GET /benefit-office/v1/onchain/eligibility`, `GET /benefit-office/v1/claims/:id/onchain` |
 
+### Code pointers for this prize
+
+The links are pinned to commit `b225434`, so the line numbers stay valid.
+
+| Prize theme | What the code does | Code |
+| --- | --- | --- |
+| Taking on-chain action | The agent's tools, including `submit_proof` | [`worker/src/agent.ts` L103–L155](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L103-L155) |
+| Taking on-chain action | `submit_proof` on the Worker: check the proof with the gate, send `claim()`, wait for the receipt | [`worker/src/app.ts` L180–L279](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L180-L279) |
+| Taking on-chain action | Simulate `claim()`, then send it from the operator key | [`worker/src/payout.ts` L86–L136](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L86-L136) |
+| Understanding chain state | Refuse a claim the chain already paid, before any card is read | [`worker/src/app.ts` L110–L117](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L110-L117) |
+| Understanding chain state | Ask `BenefitAgeGate.verifyClaimAge` with `eth_call` | [`worker/src/verify.ts` L27–L38](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/verify.ts#L27-L38) |
+| Understanding chain state | Turn a reverted simulation into a reason the agent can explain | [`worker/src/payout.ts` L51–L66](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/payout.ts#L51-L66) |
+| Understanding chain state | The agent's instructions, including what to say for each failure code | [`worker/src/agent.ts` L34–L47](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L34-L47) |
+| Staying within policy | The LLM proxy: the system prompt and the tools are fixed on the server | [`worker/src/agent.ts` L290–L301](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L290-L301) |
+| Staying within policy | `BenefitOffice.claim()`: operator only, once per wallet, recompute `claimHash`, verify through the gate, pay JPYC | [`contracts/src/BenefitOffice.sol` L76–L94](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitOffice.sol#L76-L94) |
+| Staying within policy | `BenefitAgeGate`: pinned verifier code hash, claim binding, time window, pinned trust roots | [`contracts/src/BenefitAgeGate.sol` L22–L57](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/contracts/src/BenefitAgeGate.sol#L22-L57) |
+| Reading the chain as its own tool (not live yet) | Tool definitions, the chain reader, and the two endpoints | [`worker/src/agent.ts` L198–L221](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/agent.ts#L198-L221), [`worker/src/onchain.ts` L47–L99](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/onchain.ts#L47-L99), [`worker/src/app.ts` L150–L178](https://github.com/a42x/ETHGlobalTokyo2026/blob/b2254345e7f75873bc518df35baf939e684ae955/worker/src/app.ts#L150-L178) |
+
+The agent loop that runs these tools in the browser is in the agent mini app (a42x/miniapp-playground, private). It keeps the proof out of the conversation.
+
 ### The prize's submission requirements
 
 | Requirement | Where |
