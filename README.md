@@ -6,7 +6,7 @@
   <img src="docs/images/demo-phone.gif" width="300" alt="Screen recording on an iPhone: the agent finds a benefit, the wallet asks for consent and the signing PIN, the card is read over NFC, the contract pays 500 JPYC, the payout shows on Polygonscan, and the wallet balance goes up">
 </p>
 
-A screen recording of the demo on an iPhone, played at 1.5x speed, with the wait while the phone makes the proof shortened.
+A screen recording of the demo on an iPhone, played at 1.5x speed, with the wait while the phone makes the proof shortened. Making the proof itself took about 12 seconds on an iPhone 16 Pro.
 
 - **ETHGlobal page:** <https://ethglobal.com/showcase/mynaagent-hqgrm>
 - **Live:**
@@ -32,7 +32,7 @@ Next on our roadmap is proving residency the same way, because city benefits are
 
 ## What it does in the demo
 
-These frames come from our demo video.
+These frames come from our demo video, submitted on the [ETHGlobal page](https://ethglobal.com/showcase/mynaagent-hqgrm).
 
 | | |
 | --- | --- |
@@ -49,7 +49,7 @@ These frames come from our demo video.
    - for MynaWallet's backend, which checks with the JPKI service that the card is valid and belongs to the logged-in user.
    - over the claim's challenge.
 
-   The phone then generates a zero-knowledge proof of "20 or older" locally. The benefit office, the agent and the chain receive only the proof. They never see the birth date, the certificate or the card signature.
+   The phone then generates a zero-knowledge proof of "20 or older" locally. The mini app holds the proof and sends it to the benefit office, which has it verified on-chain. The LLM only learns whether the proof succeeded. The benefit office, the agent and the chain never see the birth date, the certificate or the card signature.
 6. The agent submits the proof. The benefit office contract on Polygon Amoy verifies it and pays the benefit in JPYC to the user's wallet in the same transaction. The office registers each benefit and its amount in the contract, and the demo benefit pays 500 JPYC.
 7. The contract refuses a second claim for the same benefit from the same wallet.
 
@@ -218,6 +218,8 @@ Details, measurements and trust assumptions: [docs/submission-zk.md](docs/submis
 | `BenefitAgeGate` (J-LIS roots) | [`0x44a0c9187cacfd2211d6e36e662b81e21950fdee`](https://amoy.polygonscan.com/address/0x44a0c9187cacfd2211d6e36e662b81e21950fdee) |
 | Groth16 Verifier | [`0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078`](https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078) |
 | JPYC | [`0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29`](https://amoy.polygonscan.com/address/0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29) |
+
+Our contracts above are source-verified on Polygonscan, so you can read the code there. The gates and the verifier run inside `BenefitOffice.claim()`, so their own pages list no transactions. Every payout is listed on the page of the office the demo uses.
 
 MynaWallet's development backend is connected to the JPKI test environment, so its wallets are registered with test cards, and the Worker points at the test-card office. The same circuit and verifier are designed to accept real cards too (the real-card office uses a gate that pins the production J-LIS roots), but no real card has claimed through the v2 verifier yet. Which environment a proof belongs to is decided by the root key each gate pins.
 
