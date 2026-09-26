@@ -18,5 +18,6 @@
     "viaIR": true
   },
   "setup": "single-party test setup, not a ceremony",
-  "explorer": "https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078"
+  "explorer": "https://amoy.polygonscan.com/address/0x8b87ccb35a5f90f4ff963bf4b1bd6551a0aac078",
+  "sourceCommit": "1b6d87d"
 }

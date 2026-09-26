@@ -8,7 +8,9 @@
     "address": "0x44a0c9187cacfd2211d6e36e662b81e21950fdee",
     "transaction": "0xb82b3cc4ea8c0e2133e2e65a5d695f92683041b14751ff28ea1d288cb063cc13",
     "block": 48579440,
-    "gasUsed": 327436
+    "gasUsed": 327436,
+    "sourceCommit": "1b6d87d",
+    "bytecodeCheck": "deployed bytecode identical to contracts/src at 1b6d87d with immutables masked (checked 2026-09-26)"
   },
   "BenefitAgeGateTestRoot": {
     "address": "0x5cc9a5b5779e81fedb1bb8ecceb94aa553f254a6",
@@ -16,14 +18,18 @@
     "block": 48579440,
     "gasUsed": 316164,
     "testRoot": "0x856b48145522368c129f328bf5de7d9ecd104b333116b134eabffc505ee17e91",
-    "testRootSource": "zk-age-verifier/fixtures/synthetic (ZeroKeyMate synthetic JPKI root, not a real card)"
+    "testRootSource": "zk-age-verifier/fixtures/synthetic (ZeroKeyMate synthetic JPKI root, not a real card)",
+    "sourceCommit": "1b6d87d",
+    "bytecodeCheck": "deployed bytecode identical to contracts/src at 1b6d87d with immutables masked (checked 2026-09-26)"
   },
   "BenefitAgeGateJpkiTest": {
     "address": "0x70bc454c84536f05934051ba7b7bb91e3c368588",
     "transaction": "0x7b8a5c113f5d4f551d2ccc81abdd0fbd013aeba7c51f2172532b15fb9ad53d78",
     "block": 48579444,
     "gasUsed": 357271,
-    "roots": "JPKI-TEST signing CAs sig_ca_8, sig_ca_1, sig_ca_14, sig_ca_10 (a42x/jpki-api certificates/development)"
+    "roots": "JPKI-TEST signing CAs sig_ca_8, sig_ca_1, sig_ca_14, sig_ca_10 (a42x/jpki-api certificates/development)",
+    "sourceCommit": "1b6d87d",
+    "bytecodeCheck": "deployed bytecode identical to contracts/src at 1b6d87d with immutables masked (checked 2026-09-26)"
   },
   "BenefitOffice": {
     "address": "0x946105a8d563c70be8d6b8682047e9064878c885",
@@ -44,7 +50,9 @@
       "0xb65cac5c219407757938dd10f2fdc00137f11867aaf098f2d626b256e88b6115",
       "0xace44576ce9c0429cf0f6127146007d2b0451ecc8a1230faf1b727de9ec38390"
     ],
-    "note": "has the demo-only resetPaid"
+    "note": "has the demo-only resetPaid",
+    "sourceCommit": "1b6d87d",
+    "bytecodeCheck": "deployed bytecode identical to contracts/src at 1b6d87d with immutables masked (checked 2026-09-26)"
   },
   "BenefitOfficeJpkiTest": {
     "address": "0xe83485cb12bc6e6ed4a5b4b016afe119da5a55b2",
@@ -64,7 +72,9 @@
       "0xb748b223ddc313965925003f34ccdbaf905c9dfa1bd4275021c4c5285786f5e9",
       "0x0a45c7b98f1c8cece90f35d9f2eaae9d65835b15cfb29fa4800fc97bac8a50cb"
     ],
-    "note": "has the demo-only resetPaid; the Worker points here (test cards)"
+    "note": "has the demo-only resetPaid; the Worker points here (test cards)",
+    "sourceCommit": "1b6d87d",
+    "bytecodeCheck": "deployed bytecode identical to contracts/src at 1b6d87d with immutables masked (checked 2026-09-26)"
   },
   "deprecated": {
     "verifierV1": {
@@ -96,7 +106,7 @@
         "gate": "0x176d7299c1a118356fdd8ed0d15a68b8fcf45803 (BenefitAgeGate, J-LIS)",
         "transaction": "0x2d3f0fb7d49097f734d24a404962cec3e0fe74a598cfaf43b9cf058b95853eb7",
         "block": 48553891,
-        "operator": "0x9aE507979F85d5B666313eA323f357209c871395 (deployer until the Worker EOA is set)",
+        "operator": "0x71B5F8230BC32cb0633377C4a79F8B588A6A17B3 (Worker operator, set on 2026-09-26 by setOperator tx 0xbb926c23ad7a11ae8f868f279a5678e2fe2ebcf00f11a3c26ee10be5a78f85ef; deployer before that)",
         "jpyc": "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29",
         "benefits": {
           "youth-support-2026": {
