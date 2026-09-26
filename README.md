@@ -54,34 +54,32 @@ The prize asks for AI agents that understand blockchain activity and take on-cha
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph phone["iPhone: MynaWallet app"]
-    miniapp["Agent mini app (WebView)<br/>chat UI and agent loop<br/>holds the conversation and the proof"]
-    prover["Myna.jpki.prove<br/>consent sheet, NFC,<br/>native Groth16 prover"]
     card[("My Number Card")]
+    prover["Myna.jpki.prove<br/>consent sheet, NFC,<br/>native Groth16 prover"]
+    miniapp["Agent mini app (WebView)<br/>chat UI and agent loop<br/>holds the conversation and the proof"]
   end
-  subgraph worker["Cloudflare Worker (this repo)"]
-    proxy["POST /agent/v1/messages<br/>LLM proxy with fixed<br/>system prompt and tools"]
-    office["/benefit-office/v1/*<br/>benefits, claims, proof check, payout"]
-    db[("D1<br/>claims and nonces")]
-  end
+  backend["MynaWallet backend<br/>card-owner check<br/>with the JPKI service"]
   claude["Claude<br/>(Anthropic API)"]
-  backend["MynaWallet backend<br/>card-owner check with the JPKI service"]
-  subgraph amoy["Polygon Amoy"]
+  subgraph worker["Cloudflare Worker (this repo)"]
+    office["/benefit-office/v1/*<br/>benefits, claims (D1),<br/>proof check, payout"]
+    proxy["POST /agent/v1/messages<br/>LLM proxy with fixed<br/>system prompt and tools"]
+  end
+  subgraph amoy["Polygon Amoy (contracts in this repo)"]
     bo["BenefitOffice"]
     gate["BenefitAgeGate"]
     verifier["Groth16 Verifier"]
     jpyc["JPYC"]
   end
 
-  miniapp -- "messages and tool results<br/>(never the proof)" --> proxy
-  proxy --> claude
-  miniapp -- "tool calls" --> office
-  miniapp -- "prove this claim" --> prover
   prover -- "NFC and signing PIN" --> card
   prover -- "certificate and a separate<br/>card signature" --> backend
+  miniapp -- "prove this claim" --> prover
   prover -- "proof, 384 bytes" --> miniapp
-  office --> db
+  miniapp -- "messages and tool results<br/>(never the proof)" --> proxy
+  proxy --> claude
+  miniapp -- "tool calls, proof" --> office
   office -- "eth_call and simulate" --> gate
   office -- "operator sends claim()" --> bo
   bo --> gate
@@ -192,7 +190,7 @@ Example payouts with a test card and the current verifier, both to the test-card
 | Run | Transaction |
 | --- | --- |
 | Through the agent: mini app, Worker, `claim()` | [`0x8287b5fd…8d33`](https://amoy.polygonscan.com/tx/0x8287b5fd955ab2ad4cd5e894595a9cfebdb4bd27e4bd873327bc46a8e8708d33) |
-| An earlier run with the same test card | [`0x6c877a40…1ec9`](https://amoy.polygonscan.com/tx/0x6c877a40f71bc08bccb8bb9da36d1fba25512501490d6fdd4661df22df761ec9) |
+| An earlier run to the same wallet | [`0x6c877a40…1ec9`](https://amoy.polygonscan.com/tx/0x6c877a40f71bc08bccb8bb9da36d1fba25512501490d6fdd4661df22df761ec9) |
 
 The runs with a real card used the first verifier, before it accepted test cards. Their claim transactions are on the pages of the offices of that time, [`0x91F11e24…2Bd0`](https://amoy.polygonscan.com/address/0x91F11e24Fd60c654814EEF71BFB9d267B61e2Bd0) and [`0xdD042C51…d104`](https://amoy.polygonscan.com/address/0xdD042C51Ae39902C1C49b9c1D28BA1B0Ce74d104). All deployments, including the retired ones, are in [`contracts/deployments/amoy.json`](contracts/deployments/amoy.json).
 

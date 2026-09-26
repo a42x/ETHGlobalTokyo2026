@@ -1,5 +1,9 @@
 # Plan: 給付窓口 Worker（benefit-office）+ Amoy コントラクト + エージェント LLM プロキシ
 
+> **Note:** This is the plan we wrote at the start of the hackathon, kept as a record. Parts of it changed during the build. What was actually built is described in the [README](../README.md) and [submission-zk.md](submission-zk.md).
+>
+> ハッカソン開始時の計画で、記録として残しています。実際に作ったものは README と submission-zk.md を見てください。
+
 > 作成日: 2026-09-25（21:50 JST レビュー反映版）/ ステータス: Draft
 > 全体設計: a42x/api `plans/2026-09-25-ethglobal-agent-benefit-demo.md`（https://github.com/a42x/api/pull/2969、WS-A, WS-E に相当）
 > 実装先: この repo（ハッカソン限りのコードを置く public repo）。a42x/api への変更はなし
